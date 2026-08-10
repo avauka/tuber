@@ -1,23 +1,20 @@
-"""FastAPI-App. Feld-Endpunkte sind Stubs (501), bis die roten Tests in
-tests/integration/test_sync_idempotency.py grün implementiert werden."""
+"""FastAPI-App.
 
-from fastapi import FastAPI, Response
+Fehlerformat: FastAPI-Standard-Bodies. Die Offline-Queue unterscheidet
+retryable / nicht-retryable am Statuscode (4xx endgültig, 5xx und
+Netzfehler wiederholen) — kein eigenes Fehlerschema.
+"""
+
+from fastapi import FastAPI
+
+from app.api import finds, signals
 
 app = FastAPI(title="TUBER")
+
+app.include_router(finds.router)
+app.include_router(signals.router)
 
 
 @app.get("/api/health")
 def health() -> dict:
     return {"status": "ok"}
-
-
-@app.post("/api/finds")
-def create_find(payload: dict, response: Response) -> dict:  # pragma: no cover
-    response.status_code = 501
-    return {"detail": "not implemented — siehe tests/integration/test_sync_idempotency.py"}
-
-
-@app.post("/api/signals")
-def create_signal(payload: dict, response: Response) -> dict:  # pragma: no cover
-    response.status_code = 501
-    return {"detail": "not implemented"}

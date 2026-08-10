@@ -92,3 +92,26 @@ def test_signal_post_ist_ebenfalls_idempotent(client):
     assert r1.status_code == 201
     assert r2.status_code == 200
     assert r1.json()["id"] == r2.json()["id"]
+
+
+def test_revisit_due_wird_serverseitig_abgeleitet(client):
+    """Spec §10: revisit_due = found_at + params.REVISIT_OFFSET, vom Server
+    gesetzt. Der Client darf den Termin nicht bestimmen — sonst driftet die
+    Wiederbesuchslogik mit der Uhr des Geräts."""
+    found_at = datetime(2026, 8, 1, 9, 30, tzinfo=UTC)
+    r = client.post("/api/finds", json=_payload(found_at=found_at.isoformat()))
+    assert r.status_code == 201
+    erwartet = (found_at + params.REVISIT_OFFSET).date().isoformat()
+    assert r.json()["revisit_due"] == erwartet
+
+
+def test_revisit_due_vom_client_wird_ignoriert(client):
+    """Ein mitgeschickter Termin darf die serverseitige Ableitung nicht
+    überschreiben."""
+    found_at = datetime(2026, 8, 1, 9, 30, tzinfo=UTC)
+    r = client.post(
+        "/api/finds",
+        json=_payload(found_at=found_at.isoformat(), revisit_due="2099-01-01"),
+    )
+    assert r.status_code == 201
+    assert r.json()["revisit_due"] == (found_at + params.REVISIT_OFFSET).date().isoformat()
