@@ -67,10 +67,12 @@ def db_session(db_engine):
         yield session
         session.rollback()
         # Tabellen leeren, damit Tests unabhängig bleiben.
-        session.execute(text(
-            "TRUNCATE coverage, track, find, signal, media, "
-            "conditions_snapshot, session, area CASCADE"
-        ))
+        session.execute(
+            text(
+                "TRUNCATE coverage, track, find, signal, media, "
+                "conditions_snapshot, session, area CASCADE"
+            )
+        )
         session.commit()
 
 

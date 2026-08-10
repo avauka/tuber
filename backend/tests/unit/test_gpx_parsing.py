@@ -18,6 +18,7 @@ def _load(gpx_fixture_dir, name: str) -> bytes:
 
 # ---------------------------------------------------------------- Parsing
 
+
 def test_parse_returns_all_points_with_utc_times(gpx_fixture_dir):
     track = parse_gpx(_load(gpx_fixture_dir, "track_no_accuracy.gpx"))
     assert isinstance(track, ParsedTrack)
@@ -51,6 +52,7 @@ def test_parse_without_accuracy_reports_none(gpx_fixture_dir):
 
 
 # ------------------------------------------------------------- Bereinigung
+
 
 def test_clean_drops_points_above_accuracy_threshold(gpx_fixture_dir):
     """hdop 8.0 -> 40 m Schätzung -> über TRACK_ACCURACY_MAX_M -> raus."""

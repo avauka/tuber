@@ -20,12 +20,13 @@ from app.services.conditions import (
     validate_openmeteo_response,
 )
 
-JULI = date(2026, 7, 15)      # Plateau Sommer-Ökotyp
+JULI = date(2026, 7, 15)  # Plateau Sommer-Ökotyp
 NOVEMBER = date(2026, 11, 15)  # Plateau Burgunder-Ökotyp
-FEBRUAR = date(2026, 2, 15)    # Bianchetto-Fenster
+FEBRUAR = date(2026, 2, 15)  # Bianchetto-Fenster
 
 
 # ------------------------------------------------- Fenster-Konfiguration
+
 
 def test_windows_hang_am_oekotyp_nicht_an_der_art():
     """Invariante 7: sommer und burgunder sind GETRENNTE Fenster derselben
@@ -43,6 +44,7 @@ def test_jedes_fenster_hat_wirtsbaum_hinweis():
 
 
 # ----------------------------------------------------------- Saisonscore
+
 
 def test_season_score_range_und_plateau():
     w = DEFAULT_WINDOWS["aestivum_sommer"]
@@ -78,18 +80,20 @@ def test_best_window_gibt_immer_ein_fenster_zurueck():
 
 # -------------------------------------------------------- Bodenfeuchte
 
+
 def test_soil_moisture_glockenkurve():
     """Zu trocken UND zu nass sind schlecht; Monotonie weg vom Optimum."""
     scores = {m: soil_moisture_score(m) for m in (0.05, 0.15, 0.28, 0.45, 0.60)}
     for s in scores.values():
         assert 0.0 <= s <= 30.0
     peak = max(scores, key=scores.get)
-    assert 0.05 < peak < 0.60          # Optimum liegt innen, nicht am Rand
+    assert 0.05 < peak < 0.60  # Optimum liegt innen, nicht am Rand
     assert scores[0.05] < scores[0.15]  # trockener = schlechter
     assert scores[0.60] < scores[0.45]  # nasser = schlechter
 
 
 # ------------------------------------------------------- Regen-Nachlauf
+
 
 def _tage(mm_at: dict[int, float]) -> list[float]:
     """14-Tage-Liste, Index 0 = heute."""
@@ -112,6 +116,7 @@ def test_rain_score_trockenperiode_ist_null_oder_minimal():
 
 # --------------------------------------------------------- Feldfaktoren
 
+
 def test_field_score_frost_ist_null():
     """Gefrorener Boden macht die Suche sinnlos (Spec §5)."""
     assert field_score(temp_c=2.0, wind_kmh=5.0, soil_temp_c=-1.0) == 0.0
@@ -128,11 +133,16 @@ def test_field_score_hitze_und_sturm_mindern():
 
 # ---------------------------------------------------------- Gesamtscore
 
+
 def test_total_score_aufschluesselbar_und_konsistent():
     """Invariante 10: total == Summe der Teilscores, alle sichtbar."""
     b = total_score(
-        JULI, moisture=0.28, precip_daily_mm=_tage({5: 22.0}),
-        temp_c=14.0, wind_kmh=8.0, soil_temp_c=12.0,
+        JULI,
+        moisture=0.28,
+        precip_daily_mm=_tage({5: 22.0}),
+        temp_c=14.0,
+        wind_kmh=8.0,
+        soil_temp_c=12.0,
     )
     assert isinstance(b, ScoreBreakdown)
     assert 0.0 <= b.total <= 100.0
@@ -147,6 +157,7 @@ def test_gute_bedingungen_schlagen_schlechte():
 
 
 # ----------------------------------------------------- Open-Meteo-Ingest
+
 
 def test_openmeteo_fehlende_variable_schlaegt_hart_fehl():
     """Spec §5: Tippfehler in Variablennamen werden von der API still

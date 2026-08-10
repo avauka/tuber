@@ -10,15 +10,15 @@ import enum
 
 
 class ArtEnum(str, enum.Enum):
-    t_aestivum = "t_aestivum"          # Sommer-/Burgundertrüffel (EINE Art, Invariante 7)
+    t_aestivum = "t_aestivum"  # Sommer-/Burgundertrüffel (EINE Art, Invariante 7)
     t_macrosporum = "t_macrosporum"
     t_mesentericum = "t_mesentericum"
     t_borchii = "t_borchii"
     t_brumale = "t_brumale"
-    t_rufum = "t_rufum"                # Indikatorart, nie ausfiltern (Invariante 8)
-    t_excavatum = "t_excavatum"        # Indikatorart, nie ausfiltern (Invariante 8)
+    t_rufum = "t_rufum"  # Indikatorart, nie ausfiltern (Invariante 8)
+    t_excavatum = "t_excavatum"  # Indikatorart, nie ausfiltern (Invariante 8)
     t_melanosporum = "t_melanosporum"
-    tuber_spec = "tuber_spec"          # Feld-Default (Invariante 6)
+    tuber_spec = "tuber_spec"  # Feld-Default (Invariante 6)
     andere_hypogaee = "andere_hypogaee"
 
 

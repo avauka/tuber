@@ -39,9 +39,7 @@ def _enum(e: type, name: str) -> Enum:
     return Enum(e, name=name, values_callable=lambda x: [i.value for i in x])
 
 
-_uuid_pk = lambda: mapped_column(
-    UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-)
+_uuid_pk = lambda: mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
 
 class Session(Base):
@@ -77,7 +75,8 @@ class Find(Base):
     found_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     session_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("session.id"))
     species_guess: Mapped[enums.ArtEnum] = mapped_column(
-        _enum(enums.ArtEnum, "art_enum"), default=enums.ArtEnum.tuber_spec,
+        _enum(enums.ArtEnum, "art_enum"),
+        default=enums.ArtEnum.tuber_spec,
         server_default=enums.ArtEnum.tuber_spec.value,
     )
     species_confidence: Mapped[enums.SpeciesConfidenceEnum] = mapped_column(

@@ -13,9 +13,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # URL aus ENV; Fallback = lokale Dev-DB aus docker-compose.
-db_url = os.environ.get(
-    "DATABASE_URL", "postgresql+psycopg://tuber:tuber@localhost:5433/tuber"
-)
+db_url = os.environ.get("DATABASE_URL", "postgresql+psycopg://tuber:tuber@localhost:5433/tuber")
 config.set_main_option("sqlalchemy.url", db_url)
 
 target_metadata = Base.metadata

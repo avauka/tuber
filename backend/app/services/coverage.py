@@ -22,8 +22,9 @@ def classify_confidence(mean_accuracy_m: float | None) -> CoverageConfidenceEnum
     raise NotImplementedError
 
 
-def create_coverage(db: OrmSession, track_id: uuid.UUID, clean: CleanResult,
-                    buffer_m: float | None = None):
+def create_coverage(
+    db: OrmSession, track_id: uuid.UUID, clean: CleanResult, buffer_m: float | None = None
+):
     """Legt eine coverage-Zeile an (ST_Buffer + Union über geography)
     und gibt das ORM-Objekt zurück."""
     raise NotImplementedError

@@ -5,8 +5,9 @@ Tests dürfen ergänzt, nie gelöscht oder aufgeweicht werden. `uv run pytest`
 muss am Ende des Pakets den genannten Zielzustand zeigen. Ein Commit pro
 Paket, Präfix `APx:`. Bei Unklarheiten: anhalten und fragen, nicht raten.
 
-**Fertig-Kriterium für jedes Paket:** `uv run ruff check .` ist repo-weit
-sauber. Nicht nur die neu geschriebene Datei.
+**Lint-Gate für jedes Paket:** `uv run ruff check .` **und**
+`uv run ruff format --check .` sind beide repo-weit leer. Nicht nur die neu
+geschriebene Datei.
 
 Reihenfolge-Logik: Backend-Kern zuerst (AP1–AP7), dann Auth (AP8) und ein
 **früher Railway-Deploy (AP9)** — bewusst vor dem Feld-UI, weil
