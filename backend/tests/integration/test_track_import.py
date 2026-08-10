@@ -8,10 +8,8 @@ import uuid
 from datetime import UTC, datetime
 
 import pytest
-from fastapi.testclient import TestClient
 from sqlalchemy import text
 
-from app.main import app
 from app.models.core import Session as SessionModel
 
 pytestmark = pytest.mark.db
@@ -30,11 +28,6 @@ ZWEI_ZU_UNGENAUE_PUNKTE = b"""<?xml version="1.0" encoding="UTF-8"?>
   </trkseg></trk>
 </gpx>
 """
-
-
-@pytest.fixture()
-def client(db_session):
-    return TestClient(app)
 
 
 def _upload(client, content: bytes, name: str = "track.gpx"):

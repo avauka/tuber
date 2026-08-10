@@ -79,3 +79,54 @@ def db_session(db_engine):
 @pytest.fixture(scope="session")
 def gpx_fixture_dir() -> Path:
     return Path(__file__).parent / "fixtures" / "gpx"
+
+
+# --- Auth (ADR 0005) ------------------------------------------------------
+
+TEST_PASSWORD = "feldgang-2026"
+
+
+@pytest.fixture(scope="session")
+def auth_env():
+    """Passwort-Hash einmal pro Testlauf erzeugen — Argon2 ist absichtlich
+    langsam, das gehört nicht in jeden einzelnen Test."""
+    from argon2 import PasswordHasher
+
+    os.environ["AUTH_PASSWORD_HASH"] = PasswordHasher().hash(TEST_PASSWORD)
+    os.environ["SESSION_SECRET"] = "test-secret-nur-fuer-die-suite"
+    return TEST_PASSWORD
+
+
+@pytest.fixture(autouse=True)
+def _reset_login_attempts():
+    """Der Fehlversuchszähler lebt im Prozess und würde sonst zwischen Tests
+    durchschlagen."""
+    from app.core.auth import clear_login_attempts
+
+    clear_login_attempts()
+    yield
+    clear_login_attempts()
+
+
+@pytest.fixture()
+def anon_client(auth_env):
+    """Nicht angemeldeter Client.
+
+    base_url ist HTTPS, weil das Session-Cookie mit Secure gesetzt wird —
+    über http würde httpx es nicht zurückschicken, und jeder geschützte
+    Aufruf liefe ins 401.
+    """
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    with TestClient(app, base_url="https://testserver") as client:
+        yield client
+
+
+@pytest.fixture()
+def client(db_session, anon_client, auth_env):
+    """Angemeldeter Client für die geschützten Endpunkte."""
+    antwort = anon_client.post("/api/auth/login", json={"password": auth_env})
+    assert antwort.status_code == 200, antwort.text
+    return anon_client

@@ -9,9 +9,7 @@ import uuid
 from datetime import UTC, date, datetime, timedelta
 
 import pytest
-from fastapi.testclient import TestClient
 
-from app.main import app
 from app.models.core import ConditionsSnapshot
 
 pytestmark = pytest.mark.db
@@ -35,11 +33,6 @@ AUSSERHALB_WGS84 = {
     "type": "Polygon",
     "coordinates": [[[6.5, 50.5], [6.6, 50.5], [6.6, 95.0], [6.5, 95.0], [6.5, 50.5]]],
 }
-
-
-@pytest.fixture()
-def client(db_session):
-    return TestClient(app)
 
 
 def _area(client, name: str = "Sötenich") -> str:

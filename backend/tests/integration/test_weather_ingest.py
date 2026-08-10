@@ -13,11 +13,9 @@ from datetime import UTC, date, datetime, timedelta
 
 import httpx
 import pytest
-from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from app.jobs.weather_ingest import FORECAST_DAYS, HOURLY_VARIABLES, PAST_DAYS, run_ingest
-from app.main import app
 from app.models.core import Area, ConditionsSnapshot
 
 pytestmark = pytest.mark.db
@@ -40,11 +38,6 @@ STUNDENWERTE = {
 
 # past_days Tage vor heute plus forecast_days ab heute.
 TAGE_GESAMT = PAST_DAYS + FORECAST_DAYS
-
-
-@pytest.fixture()
-def client(db_session):
-    return TestClient(app)
 
 
 def _area(db, name: str = "Sötenich") -> uuid.UUID:

@@ -8,17 +8,10 @@ import uuid
 from datetime import UTC, datetime
 
 import pytest
-from fastapi.testclient import TestClient
 
 from app.core import params
-from app.main import app
 
 pytestmark = pytest.mark.db
-
-
-@pytest.fixture()
-def client(db_session):
-    return TestClient(app)
 
 
 def _payload(**overrides) -> dict:
