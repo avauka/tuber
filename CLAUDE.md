@@ -102,6 +102,7 @@ Details und Begründungen: `docs/decisions/`. Kurzfassung:
 | Backup | Railway Volume-Backups ab Tag 1; wöchentlicher pg_dump off-platform (Arbeitspaket, Ziel offen) |
 | Push | Vorbereitet (VAPID-Keys, Endpunkt-Stubs), aktiviert später |
 | Wetter-Ingest | Railway-Cron ruft `backend/app/jobs/`-Skripte, täglich |
+| Wetterquelle | Open-Meteo Forecast-API mit `past_days=14`/`forecast_days=7`, ein Call je Gebiet (ADR 0007) |
 | GPX-Logger | Offen — Feldtest-Arbeitspaket; Kriterium 1: schreibt die App Genauigkeit/hdop ins GPX? |
 
 ## Attribution (sichtbar in der App, Pflicht)

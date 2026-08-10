@@ -1,8 +1,11 @@
-"""Open-Meteo-Ingest und Bedingungs-Ausblick — Spec §5, §12.
+"""Open-Meteo-Ingest und Bedingungs-Ausblick — Spec §5, §12, ADR 0007.
 
 Kein Netzwerk: httpx.MockTransport liefert nachgebildete API-Antworten in
 der Struktur der echten Open-Meteo-Antwort. Ein Fall bildet ausdruecklich
 nach, wie die API eine falsch geschriebene Variable stillschweigend weglaesst.
+
+Seit ADR 0007 genuegt ein Aufruf je Gebiet: past_days deckt die Vergangenheit
+ab, forecast_days den Ausblick.
 """
 
 import uuid
@@ -13,12 +16,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from app.jobs.weather_ingest import (
-    ARCHIVE_DAYS,
-    FORECAST_DAYS,
-    HOURLY_VARIABLES,
-    run_ingest,
-)
+from app.jobs.weather_ingest import FORECAST_DAYS, HOURLY_VARIABLES, PAST_DAYS, run_ingest
 from app.main import app
 from app.models.core import Area, ConditionsSnapshot
 
@@ -40,14 +38,17 @@ STUNDENWERTE = {
     "precipitation": 0.0,
 }
 
+# past_days Tage vor heute plus forecast_days ab heute.
+TAGE_GESAMT = PAST_DAYS + FORECAST_DAYS
+
 
 @pytest.fixture()
 def client(db_session):
     return TestClient(app)
 
 
-def _area(db) -> uuid.UUID:
-    area = Area(id=uuid.uuid4(), name="Sötenich", geom=_wkt(QUADRAT))
+def _area(db, name: str = "Sötenich") -> uuid.UUID:
+    area = Area(id=uuid.uuid4(), name=name, geom=_wkt(QUADRAT))
     db.add(area)
     db.commit()
     return area.id
@@ -56,6 +57,11 @@ def _area(db) -> uuid.UUID:
 def _wkt(geometry: dict) -> str:
     ring = geometry["coordinates"][0]
     return "SRID=4326;POLYGON((" + ", ".join(f"{lon} {lat}" for lon, lat in ring) + "))"
+
+
+def _zeitraum(heute: date) -> list[date]:
+    ersterr = heute - timedelta(days=PAST_DAYS)
+    return [ersterr + timedelta(days=offset) for offset in range(TAGE_GESAMT)]
 
 
 def _payload(
@@ -104,18 +110,16 @@ def _payload(
     }
 
 
-def _mock_client(
-    heute: date, *, weglassen: str | None = None, archiv_tage: int = ARCHIVE_DAYS
-) -> httpx.Client:
+def _mock_client(heute: date, *, weglassen: str | None = None) -> httpx.Client:
     regen_am = heute - timedelta(days=5)
 
     def handler(request: httpx.Request) -> httpx.Response:
-        if "archive" in request.url.path:
-            tage = [heute - timedelta(days=offset) for offset in range(archiv_tage)]
-        else:
-            tage = [heute + timedelta(days=offset) for offset in range(FORECAST_DAYS)]
+        # ADR 0007: genau ein Aufruf, und zwar gegen die Forecast-API.
+        assert "forecast" in request.url.path
+        assert request.url.params["past_days"] == str(PAST_DAYS)
+        assert request.url.params["forecast_days"] == str(FORECAST_DAYS)
         return httpx.Response(
-            200, json=_payload(sorted(tage), weglassen=weglassen, regen_am=regen_am)
+            200, json=_payload(_zeitraum(heute), weglassen=weglassen, regen_am=regen_am)
         )
 
     return httpx.Client(transport=httpx.MockTransport(handler))
@@ -141,16 +145,15 @@ def test_ingest_schreibt_tageszeilen(db_session):
     heute = date(2026, 8, 1)
 
     with _mock_client(heute) as client:
-        summary = run_ingest(db_session, client, today=heute)
+        summary = run_ingest(db_session, client)
 
     assert summary.exit_code == 0
     assert summary.areas_ok == 1
     assert not summary.failures
 
     rows = _snapshots(db_session, area_id)
-    # 14 Archivtage + 7 Forecasttage, der heutige Tag liegt in beiden.
-    assert len(rows) == ARCHIVE_DAYS + FORECAST_DAYS - 1
-    assert rows[0].date == heute - timedelta(days=ARCHIVE_DAYS - 1)
+    assert len(rows) == TAGE_GESAMT
+    assert rows[0].date == heute - timedelta(days=PAST_DAYS)
     assert rows[-1].date == heute + timedelta(days=FORECAST_DAYS - 1)
 
     heutige = next(row for row in rows if row.date == heute)
@@ -171,9 +174,9 @@ def test_doppellauf_erzeugt_keine_duplikate(db_session):
     heute = date(2026, 8, 1)
 
     with _mock_client(heute) as client:
-        run_ingest(db_session, client, today=heute)
+        run_ingest(db_session, client)
         erste = len(_snapshots(db_session, area_id))
-        run_ingest(db_session, client, today=heute)
+        run_ingest(db_session, client)
 
     assert len(_snapshots(db_session, area_id)) == erste
 
@@ -184,7 +187,7 @@ def test_fehlende_variable_schlaegt_hart_fehl(db_session):
     heute = date(2026, 8, 1)
 
     with _mock_client(heute, weglassen="soil_moisture_7_to_28cm") as client:
-        summary = run_ingest(db_session, client, today=heute)
+        summary = run_ingest(db_session, client)
 
     assert summary.exit_code != 0
     assert summary.areas_ok == 0
@@ -194,36 +197,26 @@ def test_fehlende_variable_schlaegt_hart_fehl(db_session):
 
 
 def test_ein_scheiterndes_gebiet_stoppt_die_uebrigen_nicht(db_session):
-    gut = _area(db_session)
-    schlecht = Area(id=uuid.uuid4(), name="Zzz-Kaputt", geom=_wkt(QUADRAT))
-    db_session.add(schlecht)
-    db_session.commit()
+    gut = _area(db_session, "Sötenich")
+    _area(db_session, "Zzz-Kaputt")
     heute = date(2026, 8, 1)
+    aufrufe = {"anzahl": 0}
 
     def handler(request: httpx.Request) -> httpx.Response:
-        # Der zweite Abruf je Gebiet ist das Archiv; hier scheitert es fuer
-        # das alphabetisch spaetere Gebiet ueber einen Serverfehler.
-        if "Zzz" in str(request.url) or handler.calls >= 2:  # type: ignore[attr-defined]
-            handler.calls += 1  # type: ignore[attr-defined]
+        aufrufe["anzahl"] += 1
+        # Ein Aufruf je Gebiet, alphabetisch sortiert: der zweite scheitert.
+        if aufrufe["anzahl"] > 1:
             return httpx.Response(500, json={"error": True})
-        handler.calls += 1  # type: ignore[attr-defined]
-        tage = (
-            [heute - timedelta(days=o) for o in range(ARCHIVE_DAYS)]
-            if "archive" in request.url.path
-            else [heute + timedelta(days=o) for o in range(FORECAST_DAYS)]
-        )
-        return httpx.Response(200, json=_payload(sorted(tage), regen_am=heute))
-
-    handler.calls = 0  # type: ignore[attr-defined]
+        return httpx.Response(200, json=_payload(_zeitraum(heute), regen_am=heute))
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as client:
-        summary = run_ingest(db_session, client, today=heute)
+        summary = run_ingest(db_session, client)
 
     assert summary.areas_total == 2
     assert summary.areas_ok == 1
     assert summary.exit_code != 0
     # Das erste Gebiet ist trotzdem vollstaendig geschrieben.
-    assert len(_snapshots(db_session, gut)) == ARCHIVE_DAYS + FORECAST_DAYS - 1
+    assert len(_snapshots(db_session, gut)) == TAGE_GESAMT
 
 
 # ------------------------------------------------------- Ausblick-Endpunkt
@@ -234,7 +227,7 @@ def test_ausblick_ist_aufschluesselbar_und_konsistent(client, db_session):
     heute = datetime.now(UTC).date()
 
     with _mock_client(heute) as http_client:
-        run_ingest(db_session, http_client, today=heute)
+        run_ingest(db_session, http_client)
 
     r = client.get(f"/api/conditions/{area_id}")
     assert r.status_code == 200
@@ -259,7 +252,7 @@ def test_luecken_tag_nennt_den_grund(client, db_session):
     heute = datetime.now(UTC).date()
 
     with _mock_client(heute) as http_client:
-        run_ingest(db_session, http_client, today=heute)
+        run_ingest(db_session, http_client)
 
     # Ein Tag mitten im Ausblick verschwindet.
     luecke = heute + timedelta(days=3)

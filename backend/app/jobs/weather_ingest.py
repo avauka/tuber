@@ -2,17 +2,15 @@
 
 Aufruf:  python -m app.jobs.weather_ingest
 
-Je Gebiet werden zwei Zeitraeume geholt und als Tageszeilen in
-conditions_snapshot geschrieben:
+Ein Aufruf je Gebiet gegen die Forecast-API deckt beide Zeitraeume ab:
+past_days=14 fuer den Regen-Nachlauf, forecast_days=7 fuer den Ausblick
+(ADR 0007 — die Archiv-API haengt rund zwei Tage nach, und zwar genau im
+Fenster, das rain_score am staerksten gewichtet).
 
-- die letzten 14 Tage aus der Archiv-API — so weit blickt rain_score zurueck;
-- die naechsten 7 Tage aus der Forecast-API — so weit reicht der Ausblick.
-
-Beides landet in derselben Tabelle, damit GET /api/conditions ausschliesslich
-aus der DB liest: deterministisch, testbar und im Feld auch dann bedienbar,
-wenn Open-Meteo gerade nicht erreichbar ist. Der Upsert laeuft ueber
-UNIQUE(area_id, date); die Archivwerte werden nach den Forecastwerten
-geschrieben und ueberschreiben eine frueher prognostizierte Zeile.
+Die Tageszeilen landen in conditions_snapshot, damit GET /api/conditions
+ausschliesslich aus der DB liest: deterministisch, testbar und im Feld auch
+dann bedienbar, wenn Open-Meteo gerade nicht erreichbar ist. Der Upsert
+laeuft ueber UNIQUE(area_id, date).
 
 Fehlerisolation: Ein Gebiet, das scheitert, stoppt die uebrigen nicht. Am
 Ende steht eine Zusammenfassung, und der Exit-Code ist ungleich 0, sobald
@@ -25,7 +23,7 @@ import uuid
 from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from datetime import UTC, date, datetime, timedelta
+from datetime import date
 
 import httpx
 from geoalchemy2 import Geometry
@@ -38,7 +36,6 @@ from app.models.core import Area, ConditionsSnapshot
 from app.services.conditions import validate_openmeteo_response
 
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
-ARCHIVE_URL = "https://api.open-meteo.com/v1/archive"
 
 # Exakt die sechs Variablen aus Spec §5. Reihenfolge egal, Schreibweise nicht:
 # falsch geschriebene Namen ignoriert die API stillschweigend.
@@ -51,7 +48,8 @@ HOURLY_VARIABLES = (
     "wind_speed_10m",
 )
 
-ARCHIVE_DAYS = 14
+# So weit blickt rain_score zurueck bzw. so weit reicht der Ausblick.
+PAST_DAYS = 14
 FORECAST_DAYS = 7
 REQUEST_TIMEOUT_S = 30.0
 
@@ -165,39 +163,35 @@ def _area_points(db: OrmSession) -> list[tuple[uuid.UUID, str, float, float]]:
 
 
 def ingest_area(
-    db: OrmSession, client: httpx.Client, area_id: uuid.UUID, lat: float, lon: float, today: date
+    db: OrmSession, client: httpx.Client, area_id: uuid.UUID, lat: float, lon: float
 ) -> int:
-    """Forecast zuerst, Archiv danach — Archivwerte gewinnen bei Ueberschneidung."""
-    basis = _hourly_params(lat, lon)
-
-    forecast = _fetch(client, FORECAST_URL, {**basis, "forecast_days": str(FORECAST_DAYS)})
-    archive = _fetch(
+    """Ein Aufruf, beide Zeitraeume — Vergangenheit und Ausblick aus einem
+    Modelllauf, damit an der Tagesgrenze kein Sprung entsteht (ADR 0007)."""
+    payload = _fetch(
         client,
-        ARCHIVE_URL,
+        FORECAST_URL,
         {
-            **basis,
-            "start_date": (today - timedelta(days=ARCHIVE_DAYS - 1)).isoformat(),
-            "end_date": today.isoformat(),
+            **_hourly_params(lat, lon),
+            "past_days": str(PAST_DAYS),
+            "forecast_days": str(FORECAST_DAYS),
         },
     )
 
     geschrieben = 0
-    for payload in (forecast, archive):
-        for tag, spalten in _daily_rows(payload).items():
-            _upsert(db, area_id, tag, spalten, payload)
-            geschrieben += 1
+    for tag, spalten in _daily_rows(payload).items():
+        _upsert(db, area_id, tag, spalten, payload)
+        geschrieben += 1
     db.commit()
     return geschrieben
 
 
-def run_ingest(db: OrmSession, client: httpx.Client, today: date | None = None) -> IngestSummary:
-    stichtag = today or datetime.now(UTC).date()
+def run_ingest(db: OrmSession, client: httpx.Client) -> IngestSummary:
     summary = IngestSummary()
 
     for area_id, name, lat, lon in _area_points(db):
         summary.areas_total += 1
         try:
-            summary.rows_written += ingest_area(db, client, area_id, lat, lon, stichtag)
+            summary.rows_written += ingest_area(db, client, area_id, lat, lon)
             summary.areas_ok += 1
         except Exception as exc:  # noqa: BLE001 — ein Gebiet darf die uebrigen nicht stoppen
             db.rollback()

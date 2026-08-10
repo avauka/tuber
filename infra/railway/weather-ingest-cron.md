@@ -30,14 +30,15 @@ Upsert.
 
 ## Was der Job schreibt
 
-Je Gebiet (Abrufpunkt: `ST_Centroid` der Gebietsgeometrie) zwei Zeiträume:
+Je Gebiet (Abrufpunkt: `ST_Centroid` der Gebietsgeometrie) **ein** Aufruf
+gegen die Forecast-API mit `past_days=14` und `forecast_days=7` — beide
+Zeiträume aus einem Modelllauf (ADR 0007):
 
-- **letzte 14 Tage** aus der Archiv-API — so weit blickt `rain_score` zurück;
-- **nächste 7 Tage** aus der Forecast-API — so weit reicht der Ausblick.
+- **letzte 14 Tage** — so weit blickt `rain_score` zurück;
+- **nächste 7 Tage** — so weit reicht der Ausblick.
 
-Beides als Tageszeilen in `conditions_snapshot`, Upsert über
-`UNIQUE(area_id, date)`. Archivwerte werden nach den Forecastwerten
-geschrieben und überschreiben eine früher prognostizierte Zeile.
+Als Tageszeilen in `conditions_snapshot`, Upsert über
+`UNIQUE(area_id, date)`.
 
 ## Exit-Codes
 
