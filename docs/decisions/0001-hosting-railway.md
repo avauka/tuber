@@ -27,10 +27,11 @@ günstiger, verlangt aber OS-Pflege; Home-Server kollidiert mit Feld-Sync
 |---|---|
 | Domain | `https://tuber-production-9a4c.up.railway.app` |
 | Edge-Region | `ams1` (Amsterdam), aus `x-railway-edge` |
-| DB | PostGIS-Template, PostgreSQL 16 + PostGIS 3.4 |
-| API-Service | Docker-Build aus `backend/Dockerfile`, läuft |
-| Wetter-Cron | **noch nicht eingerichtet** |
+| Service `PostGIS` | PostGIS-Template, PostgreSQL 16 + PostGIS 3.4 |
+| Service `tuber` | API, Docker-Build aus `backend/Dockerfile`, läuft |
+| Service `wetter-cron` | angelegt, **Schedule noch nicht eingerichtet** |
 | Media-/Basiskarten-Volume | noch nicht nötig (ab AP10/AP13) |
+| Volume-Backups | **nicht aktiv** — nur im Pro-Plan verfügbar |
 
 Von aussen verifiziert: `/api/health` antwortet `200`, HTTP wird per `301` auf
 HTTPS umgeleitet, alle `/api/`-Routen antworten ohne Cookie mit `401`, ein
@@ -41,6 +42,19 @@ Dass das Schema in der Produktionsdatenbank steht, folgt aus dem Start selbst:
 antwortender Healthcheck heisst also, dass die Migration gegen die
 Produktions-DB durchgelaufen ist.
 
-**Offen und bewusst nicht per Fernprüfung feststellbar:** die exakten
-Servicenamen im Railway-Projekt und ob die Volume-Backups aktiviert sind
-(ADR 0004). Beides ist im Dashboard zu bestätigen.
+### Folge für das Backup (ADR 0004)
+
+Volume-Backups bietet Railway nur im Pro-Plan an (verifiziert 2026-08-10).
+Punkt 1 von ADR 0004 ist damit auf dem aktuellen Plan nicht umsetzbar. Die
+dortige Feststellung bleibt trotzdem richtig — sie wird nur nicht durch
+Volume-Backups aufgelöst, sondern durch **AP15** (wöchentlicher `pg_dump`
+off-platform). Bis AP15 steht, existiert kein Backup. Das ist vertretbar,
+solange keine Felddaten erfasst sind, und wird es ab dem ersten echten Fund
+nicht mehr.
+
+### Härtung (AP9c)
+
+`/docs`, `/redoc` und `/openapi.json` sind standardmässig abgeschaltet. Mit
+`DOCS_ENABLED=true` erscheinen sie unter `/api/docs` und
+`/api/openapi.json` — dort greift die Auth-Dependency. Alle Antworten tragen
+HSTS, `X-Content-Type-Options` und `X-Frame-Options`.

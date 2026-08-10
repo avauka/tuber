@@ -8,31 +8,28 @@ angeleitet; hier steht, **was** am Ende stehen soll.
 | Punkt | Stand |
 |---|---|
 | Domain | `https://tuber-production-9a4c.up.railway.app` |
-| `db` (PostGIS) | läuft — belegt durch die im Entrypoint gelaufene Migration |
-| `api` | läuft, `/api/health` → `200` |
+| Service `PostGIS` | läuft — belegt durch die im Entrypoint gelaufene Migration |
+| Service `tuber` (API) | läuft, `/api/health` → `200` |
+| Service `wetter-cron` | angelegt, **Schedule noch offen** |
 | HTTPS | HTTP wird per `301` umgeleitet |
 | Auth | alle `/api/`-Routen ohne Cookie → `401` |
 | `AUTH_PASSWORD_HASH` | gesetzt und nicht leer (Fehlversuch → `401`, nicht `500`) |
-| `wetter-cron` | **noch nicht eingerichtet** |
-| Volume-Backups | im Dashboard zu bestätigen (ADR 0004) |
-| `/docs`, `/redoc`, `/openapi.json` | **öffentlich erreichbar** — siehe unten |
+| Volume-Backups | **nicht aktiv** — nur im Pro-Plan (ADR 0004) |
+| Schema-Oberfläche | seit AP9c standardmässig aus |
 
-### Offener Punkt: öffentliches API-Schema
+### Offen: kein Backup
 
-Die FastAPI-Oberflächen liegen unter `/docs`, `/redoc` und `/openapi.json`,
-also **ausserhalb** von `/api/` — und damit ausserhalb des Auth-Schutzes, der
-bewusst nur `/api/*` abdeckt. Abrufbar ist die vollständige Endpunktliste samt
-Feldnamen und Enum-Werten (rund 24 KB).
+Volume-Backups gibt es auf dem aktuellen Plan nicht. Damit ist **AP15**
+(wöchentlicher `pg_dump` off-platform) die einzige Sicherung — und muss
+stehen, bevor die ersten Felddaten entstehen. Siehe Nachtrag in ADR 0004.
 
-Keine Zugangsdaten, keine Fundorte. Aber es ist die komplette Landkarte der
-API für jeden, der die Domain kennt. Drei Wege, die Entscheidung liegt beim
-Projektmanagement:
+### Schema-Oberfläche
 
-1. In der Produktion abschalten: `FastAPI(docs_url=None, redoc_url=None,
-   openapi_url=None)`, gesteuert über eine ENV-Variable.
-2. Unter `/api/` verschieben, dann greift der bestehende Schutz.
-3. So lassen — bei einer privaten Single-User-App ohne Registrierung ein
-   überschaubares Risiko.
+Standardmässig sind `/docs`, `/redoc` und `/openapi.json` abgeschaltet. Für
+die Entwicklung lässt sich `DOCS_ENABLED=true` setzen; die Oberfläche liegt
+dann unter `/api/docs` und `/api/openapi.json` und damit hinter der Auth.
+
+In der Produktion bleibt die Variable ungesetzt.
 
 ## Drei Services in einem Projekt
 
@@ -68,6 +65,7 @@ Kommt vom Template. Railway stellt `DATABASE_URL` als Referenz bereit.
 | `PORT` | setzt Railway selbst | — |
 | `MEDIA_ROOT` | Pfad auf dem Media-Volume, z. B. `/data/media` | ab AP13 |
 | `BASEMAP_PMTILES_PATH` | Pfad auf dem Volume, z. B. `/data/basemap.pmtiles` | ab AP10 |
+| `DOCS_ENABLED` | **nicht setzen** — öffnet die Schema-Oberfläche | nein |
 
 Fehlen `SESSION_SECRET` oder `AUTH_PASSWORD_HASH`, antwortet der Login mit
 `500` statt jemanden durchzulassen — eine Fehlkonfiguration soll laut
