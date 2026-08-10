@@ -16,6 +16,9 @@ Invarianten: `CLAUDE.md`. Infrastruktur-Entscheidungen: `docs/decisions/`.
 
 ## Lokale Entwicklung
 
-    docker compose up -d db        # PostGIS 16/3.4
+    docker compose up -d db        # PostGIS 16/3.4, Host-Port 5433
     cd backend && uv sync && uv run alembic upgrade head && uv run pytest
     cd frontend && pnpm install && pnpm dev
+
+Die Dev-DB hängt auf **Host-Port 5433**, nicht 5432: Port 5432 ist lokal von
+einer nativen PostgreSQL-Installation belegt. Im Container bleibt es 5432.

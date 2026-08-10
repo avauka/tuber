@@ -7,7 +7,8 @@ services:
       POSTGRES_PASSWORD: tuber
       POSTGRES_DB: tuber
     ports:
-      - "5432:5432"
+      # Host-Port 5433: 5432 ist lokal von einer nativen PostgreSQL-Installation belegt.
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
 volumes:
