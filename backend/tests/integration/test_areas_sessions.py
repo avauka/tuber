@@ -63,7 +63,9 @@ def _snapshots(db, area_id: str, tage: int = 14, *, wind: float | None = 8.0) ->
                 # 22 mm vor fuenf Tagen: der ideale Nachlauf aus AP2.
                 precip_mm=22.0 if offset == 5 else 0.0,
                 temp_mean_c=14.0,
-                raw={"wind_kmh": wind} if wind is not None else {},
+                # Seit Migration 0003 eine echte Spalte, nicht mehr raw-JSONB.
+                wind_kmh=wind,
+                raw={"quelle": "test-fixture"},
             )
         )
     db.commit()
@@ -170,7 +172,11 @@ def test_einfrieren_mit_vollstaendigen_daten(client, db_session):
 
 
 def test_fehlender_wind_verhindert_den_score(client, db_session):
-    """Ehrlichkeitsprinzip: lieber kein Score als einer aus geratenem Wind."""
+    """Ehrlichkeitsprinzip: lieber kein Score als einer aus geratenem Wind.
+
+    Wind kommt seit Migration 0003 aus conditions_snapshot.wind_kmh; die
+    frühere Verabredung über den raw-JSONB-Schlüssel ist entfallen.
+    """
     area_id = _area(client)
     _snapshots(db_session, area_id, wind=None)
     session_id = client.post("/api/sessions", json={"area_id": area_id}).json()["id"]

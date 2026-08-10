@@ -230,4 +230,10 @@ class ConditionsSnapshot(Base):
     soil_temp_7_28: Mapped[float | None] = mapped_column(Numeric)
     precip_mm: Mapped[float | None] = mapped_column(Numeric)
     temp_mean_c: Mapped[float | None] = mapped_column(Numeric)
+    # Spec-Luecke (Migration 0003): §5 fuehrt wind_speed_10m als Ingest-Variable
+    # und das Feld-Scoring braucht Wind, §4 gibt conditions_snapshot aber keine
+    # Spalte dafuer.
+    wind_kmh: Mapped[float | None] = mapped_column(Numeric)
+    # Roharchiv der API-Antwort. Bewusst nur Archiv: gelesen wird aus den
+    # Spalten, damit kein JSONB-Schluessel zur stillen Verabredung wird.
     raw: Mapped[dict | None] = mapped_column(JSONB)

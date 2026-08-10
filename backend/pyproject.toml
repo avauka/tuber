@@ -10,6 +10,8 @@ dependencies = [
     "alembic>=1.13",
     "psycopg[binary]>=3.2",
     "pydantic-settings>=2.4",
+    # Laufzeit-Abhängigkeit seit AP7: der Wetter-Ingest ruft Open-Meteo.
+    "httpx>=0.27",
     # Gehärtetes XML-Parsing für den GPX-Upload (Backlog AP5, Pflicht).
     "defusedxml>=0.7",
     # Von FastAPI für multipart/form-data benötigt (GPX-Upload).
@@ -26,7 +28,6 @@ packages = ["app"]
 [dependency-groups]
 dev = [
     "pytest>=8",
-    "httpx>=0.27",
     "ruff>=0.6",
     "mypy>=1.11",
     "types-defusedxml>=0.7",

@@ -15,7 +15,7 @@ from app.core.db import DbSession
 from app.models.core import Area
 from app.models.core import Session as SessionModel
 from app.schemas.sessions import SessionCreate, SessionEnd, SessionEndResult, SessionRead
-from app.services.session_conditions import freeze_conditions
+from app.services.area_conditions import freeze_conditions
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 

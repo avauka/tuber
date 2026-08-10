@@ -7,7 +7,7 @@ Netzfehler wiederholen) — kein eigenes Fehlerschema.
 
 from fastapi import FastAPI
 
-from app.api import areas, coverage, finds, sessions, signals, tracks
+from app.api import areas, conditions, coverage, finds, sessions, signals, tracks
 
 app = FastAPI(title="TUBER")
 
@@ -17,6 +17,7 @@ app.include_router(tracks.router)
 app.include_router(coverage.router)
 app.include_router(areas.router)
 app.include_router(sessions.router)
+app.include_router(conditions.router)
 
 
 @app.get("/api/health")
