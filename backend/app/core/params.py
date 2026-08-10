@@ -30,6 +30,39 @@ HDOP_TO_M_FACTOR = 5.0
 COVERAGE_CONFIDENCE_HIGH_MAX_M = 10.0
 COVERAGE_CONFIDENCE_MEDIUM_MAX_M = 20.0
 
+# --- Bedingungs-Scoring (Spec §5) -----------------------------------------
+# Gewichte der vier Teilscores; Summe = 100. Bleiben einzeln sichtbar
+# (Invariante 10: kein Score ohne Aufschlüsselung).
+SCORE_MAX_SEASON = 30.0
+SCORE_MAX_SOIL_MOISTURE = 30.0
+SCORE_MAX_RAIN = 25.0
+SCORE_MAX_FIELD = 15.0
+
+# Bodenfeuchte in 7-28 cm Tiefe (m³/m³, Open-Meteo). Stückweise lineare
+# Glockenkurve: zu trocken ist so schlecht wie zu nass (Staunässe).
+SOIL_MOISTURE_OPTIMUM_M3M3 = 0.28
+SOIL_MOISTURE_DRY_ZERO_M3M3 = 0.08
+SOIL_MOISTURE_WET_ZERO_M3M3 = 0.55
+
+# Regen-Nachlauf: ergiebiger Regen wirkt verzögert, nicht am selben Tag.
+# Gewicht 1.0 im Idealfenster, davor/danach linear abfallend.
+RAIN_LAG_IDEAL_FROM_DAYS = 3
+RAIN_LAG_IDEAL_TO_DAYS = 7
+RAIN_LAG_MAX_DAYS = 14
+RAIN_WEIGHT_TODAY = 0.2
+RAIN_WEIGHT_OLDEST = 0.1
+# Ab dieser gewichteten Regensumme gibt es die volle Punktzahl.
+RAIN_SATURATION_MM = 25.0
+
+# Feldfaktoren. Gefrorener Boden macht die Suche sinnlos (Spec §5).
+FIELD_SOIL_FROZEN_C = 0.0
+FIELD_TEMP_IDEAL_FROM_C = 5.0
+FIELD_TEMP_IDEAL_TO_C = 20.0
+FIELD_TEMP_COLD_ZERO_C = -5.0
+FIELD_TEMP_HEAT_ZERO_C = 35.0
+FIELD_WIND_CALM_KMH = 15.0
+FIELD_WIND_ZERO_KMH = 60.0
+
 # --- Feld-Logging (Invariante 1/2) ----------------------------------------
 # Oberhalb dieser gemeldeten Genauigkeit wird das Loggen blockiert. iOS ohne
 # "Genauer Standort" liefert 3-9 km — jede Schwelle im niedrigen dreistelligen
