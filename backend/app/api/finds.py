@@ -113,7 +113,7 @@ def list_finds(
         except ValueError as exc:
             # 4xx: die Queue soll das nicht wiederholen, der Aufruf ist falsch.
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
             ) from exc
     if from_ is not None:
         stmt = stmt.where(Find.found_at >= from_)

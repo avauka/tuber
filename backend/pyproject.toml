@@ -10,6 +10,10 @@ dependencies = [
     "alembic>=1.13",
     "psycopg[binary]>=3.2",
     "pydantic-settings>=2.4",
+    # Gehärtetes XML-Parsing für den GPX-Upload (Backlog AP5, Pflicht).
+    "defusedxml>=0.7",
+    # Von FastAPI für multipart/form-data benötigt (GPX-Upload).
+    "python-multipart>=0.0.9",
 ]
 
 [build-system]
@@ -25,6 +29,7 @@ dev = [
     "httpx>=0.27",
     "ruff>=0.6",
     "mypy>=1.11",
+    "types-defusedxml>=0.7",
 ]
 
 [tool.ruff]

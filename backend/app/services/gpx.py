@@ -23,6 +23,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Literal
 
+from defusedxml.ElementTree import fromstring as safe_fromstring
+
 from app.core import params
 
 AccuracySource = Literal["meters", "hdop", "none"]
@@ -144,8 +146,12 @@ def _parse_point(trkpt: ET.Element, index: int) -> TrackPoint:
 
 def parse_gpx(content: bytes) -> ParsedTrack:
     """Alle Trackpunkte in Dokumentreihenfolge, Zeiten normalisiert auf UTC."""
+    # defusedxml statt ET.fromstring: GPX kommt per Upload herein, und der
+    # Standardparser ist gegen Entity-Expansion (Billion Laughs) und externe
+    # Entities schutzlos. Die DefusedXmlException-Familie erbt von ValueError
+    # und landet damit im selben Fehlerpfad wie kaputtes GPX.
     try:
-        root = ET.fromstring(content)
+        root = safe_fromstring(content)
     except ET.ParseError as exc:
         raise ValueError(f"Kein gültiges GPX/XML: {exc}") from exc
 
