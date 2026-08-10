@@ -25,6 +25,11 @@ TRACK_SPEED_MAX_MS = 3.0
 # zur Umrechnung; Ergebnis wird als Schätzung gekennzeichnet (ADR 0006).
 HDOP_TO_M_FACTOR = 5.0
 
+# Confidence-Klassen der Coverage aus mittlerer GPS-Genauigkeit der
+# behaltenen Punkte. Fehlt jede Genauigkeitsangabe: niedrig.
+COVERAGE_CONFIDENCE_HIGH_MAX_M = 10.0
+COVERAGE_CONFIDENCE_MEDIUM_MAX_M = 20.0
+
 # --- Feld-Logging (Invariante 1/2) ----------------------------------------
 # Oberhalb dieser gemeldeten Genauigkeit wird das Loggen blockiert. iOS ohne
 # "Genauer Standort" liefert 3-9 km — jede Schwelle im niedrigen dreistelligen

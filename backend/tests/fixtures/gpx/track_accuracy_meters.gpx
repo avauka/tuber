@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="fixture-gen" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk><name>fixture</name><trkseg>
+      <trkpt lat="50.5300000" lon="6.5500000"><time>2026-08-01T09:00:00Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">4.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5500170"><time>2026-08-01T09:00:01Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">5.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5500339"><time>2026-08-01T09:00:02Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">6.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5500509"><time>2026-08-01T09:00:03Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">7.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5500678"><time>2026-08-01T09:00:04Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">8.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5500848"><time>2026-08-01T09:00:05Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">4.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5501017"><time>2026-08-01T09:00:06Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">5.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5501187"><time>2026-08-01T09:00:07Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">6.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5501357"><time>2026-08-01T09:00:08Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">7.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5501526"><time>2026-08-01T09:00:09Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">8.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5501696"><time>2026-08-01T09:00:10Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">4.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5501865"><time>2026-08-01T09:00:11Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">5.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5502035"><time>2026-08-01T09:00:12Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">6.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5502205"><time>2026-08-01T09:00:13Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">7.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5502374"><time>2026-08-01T09:00:14Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">8.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5502544"><time>2026-08-01T09:00:15Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">4.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5502713"><time>2026-08-01T09:00:16Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">5.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5502883"><time>2026-08-01T09:00:17Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">6.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5503052"><time>2026-08-01T09:00:18Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">7.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5503222"><time>2026-08-01T09:00:19Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">8.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5503392"><time>2026-08-01T09:00:20Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">4.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5503561"><time>2026-08-01T09:00:21Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">5.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5503731"><time>2026-08-01T09:00:22Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">6.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5503900"><time>2026-08-01T09:00:23Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">7.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5504070"><time>2026-08-01T09:00:24Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">8.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5504239"><time>2026-08-01T09:00:25Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">4.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5504409"><time>2026-08-01T09:00:26Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">5.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5504579"><time>2026-08-01T09:00:27Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">6.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5504748"><time>2026-08-01T09:00:28Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">7.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5504918"><time>2026-08-01T09:00:29Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">8.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5505087"><time>2026-08-01T09:00:30Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">4.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5505257"><time>2026-08-01T09:00:31Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">5.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5505427"><time>2026-08-01T09:00:32Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">6.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5505596"><time>2026-08-01T09:00:33Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">7.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5505766"><time>2026-08-01T09:00:34Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">8.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5505935"><time>2026-08-01T09:00:35Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">4.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5506105"><time>2026-08-01T09:00:36Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">5.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5506274"><time>2026-08-01T09:00:37Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">6.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5506444"><time>2026-08-01T09:00:38Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">7.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5506614"><time>2026-08-01T09:00:39Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">8.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5506783"><time>2026-08-01T09:00:40Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">4.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5506953"><time>2026-08-01T09:00:41Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">5.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5507122"><time>2026-08-01T09:00:42Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">6.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5507292"><time>2026-08-01T09:00:43Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">7.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5507462"><time>2026-08-01T09:00:44Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">8.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5507631"><time>2026-08-01T09:00:45Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">4.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5507801"><time>2026-08-01T09:00:46Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">5.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5507970"><time>2026-08-01T09:00:47Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">6.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5508140"><time>2026-08-01T09:00:48Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">7.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5508309"><time>2026-08-01T09:00:49Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">8.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5508479"><time>2026-08-01T09:00:50Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">4.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5508649"><time>2026-08-01T09:00:51Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">5.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5508818"><time>2026-08-01T09:00:52Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">6.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5508988"><time>2026-08-01T09:00:53Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">7.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5509157"><time>2026-08-01T09:00:54Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">8.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5509327"><time>2026-08-01T09:00:55Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">4.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5509496"><time>2026-08-01T09:00:56Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">5.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5509666"><time>2026-08-01T09:00:57Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">6.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5509836"><time>2026-08-01T09:00:58Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">7.0</ogt:accuracy></extensions></trkpt>
+      <trkpt lat="50.5300000" lon="6.5510005"><time>2026-08-01T09:00:59Z</time><extensions><ogt:accuracy xmlns:ogt="http://example.org/ogt">8.0</ogt:accuracy></extensions></trkpt>
+  </trkseg></trk>
+</gpx>

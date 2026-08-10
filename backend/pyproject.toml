@@ -26,3 +26,6 @@ target-version = "py312"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "db: benoetigt laufende PostGIS-Test-DB (docker compose up -d db)",
+]
