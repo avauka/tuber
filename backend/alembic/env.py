@@ -1,11 +1,11 @@
 import os
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from app.core.db import Base
 import app.models  # noqa: F401  — Modelle registrieren
+from alembic import context
+from app.core.db import Base
 
 config = context.config
 
@@ -26,9 +26,7 @@ target_metadata = Base.metadata
 
 def include_object(obj, name, type_, reflected, compare_to):
     # PostGIS-eigene Tabellen nie anfassen.
-    if type_ == "table" and name in {"spatial_ref_sys"}:
-        return False
-    return True
+    return not (type_ == "table" and name in {"spatial_ref_sys"})
 
 
 def run_migrations_offline() -> None:

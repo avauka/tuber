@@ -30,6 +30,9 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+# Migrationen sind generierter Code (alembic revision --autogenerate) und
+# werden nie von Hand nachformatiert — sonst weicht jede neue Revision ab.
+extend-exclude = ["alembic/versions"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

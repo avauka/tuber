@@ -39,7 +39,7 @@ def _enum(e: type, name: str) -> Enum:
     return Enum(e, name=name, values_callable=lambda x: [i.value for i in x])
 
 
-_uuid_pk = lambda: mapped_column(  # noqa: E731
+_uuid_pk = lambda: mapped_column(
     UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
 )
 

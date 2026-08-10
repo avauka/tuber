@@ -5,6 +5,9 @@ Tests dürfen ergänzt, nie gelöscht oder aufgeweicht werden. `uv run pytest`
 muss am Ende des Pakets den genannten Zielzustand zeigen. Ein Commit pro
 Paket, Präfix `APx:`. Bei Unklarheiten: anhalten und fragen, nicht raten.
 
+**Fertig-Kriterium für jedes Paket:** `uv run ruff check .` ist repo-weit
+sauber. Nicht nur die neu geschriebene Datei.
+
 Reihenfolge-Logik: Backend-Kern zuerst (AP1–AP7), dann Auth (AP8) und ein
 **früher Railway-Deploy (AP9)** — bewusst vor dem Feld-UI, weil
 `getCurrentPosition` einen Secure Context verlangt und das iPhone die App
@@ -40,6 +43,8 @@ geography, per SQL). **Fertig:** `test_coverage.py` grün.
 (unverändert!) → clean → Coverage anlegen. Session-Zuordnung über
 Zeitüberlappung, sonst `session_id = null`. Duplikaterkennung über
 Zeitfenster+Geometrie. Tests ergänzen (Fixtures liegen bereit).
+GPX-Upload MUSS gegen XML-Entity-Expansion gehärtet sein (defusedxml oder
+äquivalente Größen-/Tiefenbegrenzung) — Pflicht, nicht optional.
 
 ## AP6 — Areas- und Sessions-API
 `GET/POST /api/areas`, `POST /api/sessions`, `PATCH /api/sessions/{id}/end`.
