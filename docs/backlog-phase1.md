@@ -25,7 +25,7 @@ daher über HTTPS erreichen muss, um den Feldmodus real zu testen.
 Alle Funktionen in `app/services/conditions.py` implementieren
 (13 Tests in `test_conditions_scoring.py`). Kurvenformen einfach halten
 (stückweise linear reicht) — kalibriert wird später mit echten Daten.
-**Fertig:** Unit komplett grün (21/21).
+**Fertig:** Unit komplett grün (23/23).
 
 ## AP3 — Sync-API grün (Finds/Signals)
 DB-Wiring (`app/core/db.py` um Engine/Session-Dependency ergänzen),

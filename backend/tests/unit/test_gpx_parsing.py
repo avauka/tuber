@@ -4,7 +4,7 @@ Diese Tests existieren VOR der Implementierung (CLAUDE.md, Test-First).
 Sie dürfen nie gelöscht oder aufgeweicht werden, um grün zu werden.
 """
 
-from datetime import timezone
+from datetime import UTC
 
 import pytest
 
@@ -24,7 +24,7 @@ def test_parse_returns_all_points_with_utc_times(gpx_fixture_dir):
     assert len(track.points) == 60
     for p in track.points:
         assert p.time.tzinfo is not None
-        assert p.time.utcoffset() == timezone.utc.utcoffset(None)
+        assert p.time.utcoffset() == UTC.utcoffset(None)
 
 
 def test_parse_accuracy_meters_from_extension(gpx_fixture_dir):

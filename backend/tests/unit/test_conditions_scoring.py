@@ -68,7 +68,7 @@ def test_season_score_fenster_ueber_jahreswechsel():
 def test_best_window_gibt_immer_ein_fenster_zurueck():
     """Spec §5: Die Engine kennt kein 'keine Saison'."""
     for month in range(1, 13):
-        w, score = best_window(date(2026, month, 15))
+        w, _score = best_window(date(2026, month, 15))
         assert w is not None
         assert w.key in DEFAULT_WINDOWS
     # Februar: Bianchetto-Fenster (Beispiel aus dem Spec)

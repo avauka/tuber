@@ -62,6 +62,9 @@ hinweisen, nicht übernehmen.
   Phase 1, hinter Feature-Flag).
 - Keine Community-/Sharing-/Cloud-Aggregations-Features. Keine Entnahme-Felder.
   Keine automatische Artbestimmung per Foto.
+- `alembic check` ist KEIN Gate: Das PostGIS-Image bringt Tiger-Geocoder-Tabellen
+  mit, und die GIST-Indizes sind bewusst migrationsverwaltet — Autogenerate-Diffs
+  sind daher erwartbar. Gate ist der Upgrade/Downgrade-Roundtrip.
 
 ## Test-First bei kritischen Pfaden
 
@@ -73,8 +76,11 @@ Für diese Bereiche existieren Tests, **bevor** Implementierungscode entsteht:
 - Bedingungs-Scoring (vier Teilkomponenten einzeln + Gesamtscore)
 
 Fixtures liegen in `backend/tests/fixtures/`. Tests dürfen bei fehlender
-Implementierung fehlschlagen (rot ist der Startzustand), aber nie gelöscht oder
-aufgeweicht werden, um grün zu werden.
+Implementierung fehlschlagen (rot ist der Startzustand). Tests dürfen nie
+gelöscht oder inhaltlich aufgeweicht werden (Assertions, Erwartungswerte,
+Fixture-Semantik), um grün zu werden. Rein kosmetische Lint-/Format-Korrekturen
+an Testdateien sind in eigenen Pflege-Commits erlaubt. Neue Tests zu ergänzen
+ist ausdrücklich erwünscht.
 
 ## Phasendisziplin
 

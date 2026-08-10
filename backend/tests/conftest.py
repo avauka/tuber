@@ -43,8 +43,9 @@ def db_engine():
         )
 
     # Schema über die echten Migrationen aufbauen.
-    from alembic import command
     from alembic.config import Config
+
+    from alembic import command
 
     backend_dir = Path(__file__).resolve().parents[1]
     cfg = Config(str(backend_dir / "alembic.ini"))

@@ -6,7 +6,7 @@ auf geography), nicht gegen eine Python-Näherung.
 
 import math
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import text
@@ -22,7 +22,7 @@ pytestmark = pytest.mark.db
 LAT0, LON0 = 50.53, 6.55
 M_PER_DEG_LAT = 111320.0
 M_PER_DEG_LON = M_PER_DEG_LAT * math.cos(math.radians(LAT0))
-T0 = datetime(2026, 8, 1, 9, 0, tzinfo=timezone.utc)
+T0 = datetime(2026, 8, 1, 9, 0, tzinfo=UTC)
 
 
 def _line_points(n: int, spacing_m: float, accuracy: float | None) -> tuple[TrackPoint, ...]:

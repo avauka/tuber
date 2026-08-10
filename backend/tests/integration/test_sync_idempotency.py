@@ -5,7 +5,7 @@ darf daraus nie Duplikate machen (client_uuid ist der Schlüssel).
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -27,7 +27,7 @@ def _payload(**overrides) -> dict:
         "lat": 50.53,
         "lon": 6.55,
         "gps_accuracy_m": 6.5,
-        "found_at": datetime(2026, 8, 1, 9, 30, tzinfo=timezone.utc).isoformat(),
+        "found_at": datetime(2026, 8, 1, 9, 30, tzinfo=UTC).isoformat(),
     }
     base.update(overrides)
     return base
@@ -83,7 +83,7 @@ def test_signal_post_ist_ebenfalls_idempotent(client):
         "client_uuid": str(uuid.uuid4()),
         "lat": 50.531,
         "lon": 6.552,
-        "observed_at": datetime(2026, 8, 1, 10, 0, tzinfo=timezone.utc).isoformat(),
+        "observed_at": datetime(2026, 8, 1, 10, 0, tzinfo=UTC).isoformat(),
         "signal_type": "hund_anzeige_ohne_fund",
         "dog_confidence": "stark",
     }
