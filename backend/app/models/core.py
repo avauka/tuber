@@ -48,6 +48,10 @@ class Session(Base):
     id: Mapped[uuid.UUID] = _uuid_pk()
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Spec-Luecke (Migration 0002): §5 verlangt das Einfrieren der Bedingungen
+    # beim Session-Ende, dafuer braucht die Session das Gebiet. §4 listet das
+    # Feld nicht.
+    area_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("area.id"))
     area_label: Mapped[str | None] = mapped_column(Text)
     dog_name: Mapped[str | None] = mapped_column(Text)
     dog_work_minutes: Mapped[int | None] = mapped_column(Integer)
