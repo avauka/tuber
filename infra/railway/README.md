@@ -1,7 +1,38 @@
-# Railway-Deployment — Ziel-Topologie
+# Railway-Deployment — Ziel-Topologie und Ist-Zustand
 
 Setzt ADR 0001 um. Die manuellen Schritte im Railway-Dashboard werden separat
 angeleitet; hier steht, **was** am Ende stehen soll.
+
+## Stand 2026-08-10 (AP9b von aussen verifiziert)
+
+| Punkt | Stand |
+|---|---|
+| Domain | `https://tuber-production-9a4c.up.railway.app` |
+| `db` (PostGIS) | läuft — belegt durch die im Entrypoint gelaufene Migration |
+| `api` | läuft, `/api/health` → `200` |
+| HTTPS | HTTP wird per `301` umgeleitet |
+| Auth | alle `/api/`-Routen ohne Cookie → `401` |
+| `AUTH_PASSWORD_HASH` | gesetzt und nicht leer (Fehlversuch → `401`, nicht `500`) |
+| `wetter-cron` | **noch nicht eingerichtet** |
+| Volume-Backups | im Dashboard zu bestätigen (ADR 0004) |
+| `/docs`, `/redoc`, `/openapi.json` | **öffentlich erreichbar** — siehe unten |
+
+### Offener Punkt: öffentliches API-Schema
+
+Die FastAPI-Oberflächen liegen unter `/docs`, `/redoc` und `/openapi.json`,
+also **ausserhalb** von `/api/` — und damit ausserhalb des Auth-Schutzes, der
+bewusst nur `/api/*` abdeckt. Abrufbar ist die vollständige Endpunktliste samt
+Feldnamen und Enum-Werten (rund 24 KB).
+
+Keine Zugangsdaten, keine Fundorte. Aber es ist die komplette Landkarte der
+API für jeden, der die Domain kennt. Drei Wege, die Entscheidung liegt beim
+Projektmanagement:
+
+1. In der Produktion abschalten: `FastAPI(docs_url=None, redoc_url=None,
+   openapi_url=None)`, gesteuert über eine ENV-Variable.
+2. Unter `/api/` verschieben, dann greift der bestehende Schutz.
+3. So lassen — bei einer privaten Single-User-App ohne Registrierung ein
+   überschaubares Risiko.
 
 ## Drei Services in einem Projekt
 
