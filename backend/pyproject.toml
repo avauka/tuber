@@ -1,0 +1,28 @@
+[project]
+name = "tuber-backend"
+version = "0.1.0"
+description = "TUBER Backend — Trüffel-Habitatkartierung & Felddokumentation"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "sqlalchemy>=2.0.35",
+    "geoalchemy2>=0.15",
+    "alembic>=1.13",
+    "psycopg[binary]>=3.2",
+    "pydantic-settings>=2.4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "httpx>=0.27",
+    "ruff>=0.6",
+    "mypy>=1.11",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

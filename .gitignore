@@ -1,0 +1,10 @@
+.env
+data/
+__pycache__/
+.venv/
+node_modules/
+dist/
+*.pmtiles
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/

@@ -1,0 +1,14 @@
+# Nur lokale Entwicklung. Produktion läuft auf Railway (siehe docs/decisions/0001).
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: tuber
+      POSTGRES_PASSWORD: tuber
+      POSTGRES_DB: tuber
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata:
