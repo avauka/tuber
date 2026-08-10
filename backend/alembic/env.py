@@ -1,20 +1,21 @@
-import os
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
 
 import app.models  # noqa: F401  — Modelle registrieren
 from alembic import context
-from app.core.db import Base
+from app.core.db import Base, database_url
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# URL aus ENV; Fallback = lokale Dev-DB aus docker-compose.
-db_url = os.environ.get("DATABASE_URL", "postgresql+psycopg://tuber:tuber@localhost:5433/tuber")
-config.set_main_option("sqlalchemy.url", db_url)
+# Eine Quelle für die URL, damit Migration und App nie auseinanderlaufen —
+# inklusive der Normalisierung von postgres:// (Railway).
+# Prozentzeichen verdoppeln: configparser wuerde sie sonst als Interpolation
+# lesen und an einem Passwort mit % scheitern.
+config.set_main_option("sqlalchemy.url", database_url().replace("%", "%%"))
 
 target_metadata = Base.metadata
 

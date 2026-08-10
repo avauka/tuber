@@ -1,0 +1,17 @@
+# Das lokale venv passt nicht zur Container-Architektur.
+.venv/
+# Tests und ihre Fixtures gehoeren nicht ins Laufzeit-Image.
+tests/
+# Lokale Daten (Media, PMTiles) liegen auf einem Volume, nicht im Image.
+data/
+node_modules/
+.git/
+.gitignore
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.env
+Dockerfile
+.dockerignore

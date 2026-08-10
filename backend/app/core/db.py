@@ -26,8 +26,22 @@ class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
 
 
+def normalize_database_url(url: str) -> str:
+    """Treiber-Präfix ergänzen, falls keins gesetzt ist.
+
+    Railway (und viele andere Anbieter) liefern `postgres://…` — ein Schema,
+    das SQLAlchemy 2 nicht mehr kennt. Ohne Normalisierung scheitert der
+    Start mit einem Fehler, der nichts mit der Ursache zu tun hat. Eine
+    bereits gesetzte Treiberangabe (`postgresql+…`) bleibt unangetastet.
+    """
+    for legacy in ("postgres://", "postgresql://"):
+        if url.startswith(legacy):
+            return "postgresql+psycopg://" + url[len(legacy) :]
+    return url
+
+
 def database_url() -> str:
-    return os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL)
+    return normalize_database_url(os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL))
 
 
 @lru_cache(maxsize=1)

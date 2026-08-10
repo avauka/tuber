@@ -1,0 +1,6 @@
+# Shell-Skripte laufen im Container unter Linux. Mit CRLF endet die
+# Shebang-Zeile auf ein Wagenruecklaufzeichen, und der Start scheitert mit
+# "no such file or directory" — einem Fehler, der auf alles Moegliche zeigt,
+# nur nicht auf die Zeilenenden.
+*.sh text eol=lf
+Dockerfile text eol=lf
