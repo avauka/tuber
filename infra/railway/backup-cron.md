@@ -3,44 +3,82 @@
 Setzt ADR 0004 Punkt 2 um — und ist, da Volume-Backups den Pro-Plan
 voraussetzen, **die einzige Sicherung des Projekts**.
 
+## Warum der Cron nur anklopft
+
+Railway kennt keine geteilten Volumes: Ein Volume gehört genau einem Service
+(verifiziert 2026-08-11). Das Volume hängt am API-Service `tuber`, weil der
+Download-Endpunkt es lesen muss — also muss auch der Dump dort geschrieben
+werden.
+
+Der Cron-Service schreibt deshalb nichts selbst. Er löst den Dump per HTTP im
+API-Service aus und braucht dafür **weder Datenbankzugang noch ein eigenes
+Volume**.
+
 ## Kommando
 
 ```
-python -m app.jobs.backup_dump
+python -m app.jobs.trigger_backup
 ```
 
-Zweiter Cron-Service neben `wetter-cron`, **dasselbe Image** wie der
-API-Service. Arbeitsverzeichnis `backend/`, keine Argumente.
+Eigener Cron-Service, **dasselbe Image** wie der API-Service.
+Arbeitsverzeichnis `backend/`, keine Argumente.
 
 ## Umgebung
 
+### Service `backup-cron`
+
 | Variable | Zweck | Pflicht |
 |---|---|---|
-| `DATABASE_URL` | Referenz auf `PostGIS` | ja |
-| `BACKUP_PASSPHRASE` | symmetrische GPG-Passphrase | **ja** |
-| `BACKUP_DIR` | Ablage auf dem Volume, z. B. `/data/backups` | ja |
+| `BASE_URL` | z. B. `https://tuber-production-9a4c.up.railway.app` | ja |
+| `BACKUP_TRIGGER_TOKEN` | Bearer-Token, identisch zum API-Service | ja |
 
-Ohne `BACKUP_PASSPHRASE` bricht der Job mit Exit 1 ab und schreibt nichts.
+Kein `DATABASE_URL`, kein `BACKUP_PASSPHRASE`, kein Volume.
+
+### Service `tuber` (zusätzlich zu AP9)
+
+| Variable | Zweck | Pflicht |
+|---|---|---|
+| `BACKUP_DIR` | Ablage auf dem Volume, Standard `/data/backups` | ja |
+| `BACKUP_PASSPHRASE` | symmetrische GPG-Passphrase | **ja** |
+| `BACKUP_TRIGGER_TOKEN` | derselbe Token wie beim Cron | ja |
+
+Volume am Service `tuber`, Mount-Pfad `/data`.
+
+Ohne `BACKUP_PASSPHRASE` bricht der Dump ab und der Endpunkt antwortet `500`.
 Es gibt keinen Fallback auf unverschlüsselt.
+
+Ist `BACKUP_TRIGGER_TOKEN` nicht gesetzt, existiert der Token-Weg nicht: Der
+Endpunkt bleibt dann per Sitzungs-Cookie erreichbar, aber der Cron kommt nicht
+mehr durch. Offen wird er nie.
 
 > Die Passphrase gehört in deinen Passwortmanager, **nicht nur** in die
 > Railway-Variablen. Geht das Projekt verloren, ist sie sonst mit weg — und
 > ein Dump ohne Passphrase ist Datenmüll.
 
-Das Volume muss am Cron-Service **und** am API-Service hängen: Der Job
-schreibt, der Download-Endpunkt liest.
+## Schreibrechte auf dem Volume
+
+Der Dienst läuft als `uid 10001`. Das Image legt `/data/backups` an und
+übereignet es diesem Benutzer — beim Mounten kann Railway das aber
+überdecken, dann gehört `/data` root und der Dump scheitert mit einem
+Schreibfehler.
+
+**Notausgang:** `RAILWAY_RUN_UID=0` am Service `tuber` setzen, dann läuft der
+Container als root. Das gibt den Non-root-Vorteil auf und ist deshalb nur die
+zweite Wahl — erst prüfen, ob es ohne geht.
 
 ## Zeitplan
 
-Wöchentlich reicht laut ADR 0004; täglich kostet nichts und verkürzt den
-möglichen Datenverlust. Empfohlen: täglich, nach dem Wetter-Ingest.
+Täglich, nach dem Wetter-Ingest.
 
-## Exit-Codes
+## Exit-Codes des Cron-Jobs
 
 | Code | Bedeutung |
 |---|---|
-| `0` | Dump geschrieben, Rotation gelaufen |
-| `1` | Passphrase fehlt, Programm fehlt, `pg_dump`/`gpg` gescheitert, Dump leer |
+| `0` | API hat den Dump geschrieben |
+| `1` | `BASE_URL`/`BACKUP_TRIGGER_TOKEN` fehlt, HTTP-Fehler, oder der Dump ist gescheitert |
+
+Ein `401` bedeutet: Token stimmt nicht überein. Ein `500` bedeutet fast immer:
+`BACKUP_PASSPHRASE` fehlt am API-Service.
 
 ## Rotation
 
@@ -63,3 +101,9 @@ Railway.
 Der Upload zu einem externen Ziel bleibt bewusst Handarbeit: Ein
 automatischer Upload bräuchte Zugangsdaten für das Sicherungsziel im selben
 Container — und damit läge der Schlüssel dort, wo der Verlust droht.
+
+## Lokal und für den Restore-Drill
+
+`python -m app.jobs.backup_dump` schreibt den Dump direkt, ohne HTTP. Für den
+lokalen Gebrauch und den Restore-Drill (ADR 0004) weiterhin der richtige Weg —
+als Cron-Ziel auf Railway nicht mehr.

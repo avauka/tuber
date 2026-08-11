@@ -11,6 +11,7 @@ statt es erst zu werden, wenn jemand daran denkt.
 """
 
 import os
+import secrets
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 
@@ -28,6 +29,13 @@ TOKEN_SUBJECT = "single-user"
 SESSION_MAX_AGE_S = 90 * 24 * 60 * 60
 
 PUBLIC_API_PATHS = frozenset({"/api/health", "/api/auth/login"})
+
+# Der Backup-Cron ruft den API-Service von aussen an und hat keine Sitzung
+# (AP15.1). Diese Pfade akzeptieren zusätzlich einen Bearer-Token — aber nur,
+# wenn einer konfiguriert ist. Ohne Token in der ENV bleibt es beim Cookie;
+# offen wird der Pfad nie.
+BACKUP_TRIGGER_PATH = "/api/backups/create"
+TOKEN_OR_SESSION_PATHS = frozenset({BACKUP_TRIGGER_PATH})
 
 LOGIN_MAX_FAILURES = 5
 LOGIN_FAILURE_WINDOW = timedelta(minutes=15)
@@ -110,10 +118,38 @@ def client_key(request: Request) -> str:
     return request.client.host if request.client else "unbekannt"
 
 
+def _bearer_token(request: Request) -> str | None:
+    schema, _, wert = request.headers.get("authorization", "").partition(" ")
+    if schema.lower() != "bearer" or not wert.strip():
+        return None
+    return wert.strip()
+
+
+def trigger_token_valid(request: Request) -> bool:
+    """Bearer-Token gegen BACKUP_TRIGGER_TOKEN prüfen.
+
+    Ist die Variable nicht gesetzt, existiert dieser Weg schlicht nicht —
+    ein leerer Erwartungswert darf niemals auf einen leeren Header passen.
+    """
+    erwartet = os.environ.get("BACKUP_TRIGGER_TOKEN", "").strip()
+    if not erwartet:
+        return False
+    mitgeliefert = _bearer_token(request)
+    if mitgeliefert is None:
+        return False
+    # Konstante Laufzeit: ein Vergleich, der bei der ersten Abweichung
+    # abbricht, verrät den Token zeichenweise.
+    return secrets.compare_digest(mitgeliefert, erwartet)
+
+
 def require_session(request: Request) -> None:
     """Globale Dependency. Alles unter /api/ ausser den PUBLIC_API_PATHS."""
     pfad = request.url.path
     if not pfad.startswith("/api/") or pfad in PUBLIC_API_PATHS:
+        return
+
+    # Zusätzlicher Weg für den Cron; das Cookie bleibt daneben gültig.
+    if pfad in TOKEN_OR_SESSION_PATHS and trigger_token_valid(request):
         return
 
     token = request.cookies.get(SESSION_COOKIE)

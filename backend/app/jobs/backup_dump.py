@@ -17,6 +17,7 @@ import shutil
 import subprocess
 import sys
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -31,6 +32,12 @@ REQUIRED_TOOLS = ("pg_dump", "gpg")
 PARTIAL_SUFFIX = ".part"
 
 CIPHER = "AES256"
+
+
+@dataclass(frozen=True)
+class BackupResult:
+    path: Path
+    removed: list[str]
 
 
 def _passphrase() -> str:
@@ -113,8 +120,14 @@ def _run_pipeline(url: str, passphrase: str, ziel: Path) -> None:
         raise BackupError(f"gpg endete mit Code {gpg_code}.")
 
 
-def run_backup(now: datetime | None = None) -> Path:
-    """Legt einen verschluesselten Dump an und raeumt alte weg."""
+def run_backup(now: datetime | None = None) -> BackupResult:
+    """Legt einen verschluesselten Dump an und raeumt alte weg.
+
+    Einziger Codepfad fuer den Dump: Sowohl `python -m app.jobs.backup_dump`
+    als auch POST /api/backups/create landen hier (AP15.1). Zwei Wege, die
+    sich auseinanderentwickeln koennen, waere bei einem Backup die
+    schlechteste denkbare Stelle dafuer.
+    """
     passphrase = _passphrase()
     _require_tools()
 
@@ -135,13 +148,13 @@ def run_backup(now: datetime | None = None) -> Path:
         raise BackupError("Der erzeugte Dump ist leer.")
 
     zwischenziel.rename(ziel)
-    return ziel
+    return BackupResult(path=ziel, removed=rotate())
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     del argv  # Keine Argumente; Konfiguration kommt aus der ENV.
     try:
-        ziel = run_backup()
+        ergebnis = run_backup()
     except BackupError as exc:
         print(f"FEHLER: {exc}", file=sys.stderr)
         return 1
@@ -149,10 +162,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"FEHLER (unerwartet): {exc}", file=sys.stderr)
         return 1
 
-    entfernt = rotate()
-    print(f"Backup: {ziel.name} ({ziel.stat().st_size} Bytes)")
-    if entfernt:
-        print(f"Rotation: {len(entfernt)} alte Dumps entfernt ({', '.join(entfernt)})")
+    print(f"Backup: {ergebnis.path.name} ({ergebnis.path.stat().st_size} Bytes)")
+    if ergebnis.removed:
+        print(
+            f"Rotation: {len(ergebnis.removed)} alte Dumps entfernt ({', '.join(ergebnis.removed)})"
+        )
     print(f"Vorhanden: {len(list_backups())}")
     return 0
 

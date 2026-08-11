@@ -10,6 +10,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from app.core.auth import BACKUP_TRIGGER_PATH
 from app.jobs import backup_dump
 from app.services import backups
 from app.services.backups import BackupError
@@ -241,3 +242,94 @@ def test_download_lehnt_traversal_ab(client, backup_verzeichnis, boesartig):
 
 def test_download_unbekannter_datei_ist_404(client, backup_verzeichnis):
     assert client.get("/api/backups/tuber-20200101-000000.dump.gpg").status_code == 404
+
+
+# ------------------------------------------------- Trigger (AP15.1)
+
+TOKEN = "cron-token-geheim"
+
+
+@pytest.fixture()
+def dump_attrappe(monkeypatch, backup_verzeichnis):
+    """run_backup ersetzen: pg_dump und gpg gibt es nur im Container."""
+
+    def _fake(now=None):
+        name = _dump_anlegen(backup_verzeichnis, datetime.now(UTC), b"verschluesselt")
+        return backup_dump.BackupResult(path=backup_verzeichnis / name, removed=[])
+
+    monkeypatch.setattr("app.api.backups.run_backup", _fake)
+
+
+def test_trigger_pfad_zeigt_auf_eine_echte_route():
+    """Die Auth-Ausnahme haengt am Pfad-String — er darf nicht verwaisen.
+
+    Ohne diese Kopplung wuerde ein umbenannter Endpunkt die Ausnahme in
+    require_session ins Leere zeigen lassen: Der Cron bekaeme 401, und
+    niemand saehe, warum.
+    """
+    from app.main import app
+
+    assert BACKUP_TRIGGER_PATH in app.openapi()["paths"]
+
+
+def test_trigger_mit_gueltigem_token(anon_client, dump_attrappe, monkeypatch):
+    monkeypatch.setenv("BACKUP_TRIGGER_TOKEN", TOKEN)
+
+    antwort = anon_client.post(BACKUP_TRIGGER_PATH, headers={"Authorization": f"Bearer {TOKEN}"})
+
+    assert antwort.status_code == 201
+    body = antwort.json()
+    assert body["name"].endswith(".dump.gpg")
+    assert body["size_bytes"] > 0
+    assert body["downloaded_at"] is None
+    assert body["stale"] is False
+
+
+def test_trigger_mit_falschem_token_ist_401(anon_client, dump_attrappe, monkeypatch):
+    monkeypatch.setenv("BACKUP_TRIGGER_TOKEN", TOKEN)
+
+    antwort = anon_client.post(
+        BACKUP_TRIGGER_PATH, headers={"Authorization": "Bearer voellig-falsch"}
+    )
+
+    assert antwort.status_code == 401
+    assert backups.list_backups() == []
+
+
+def test_trigger_ohne_token_und_ohne_cookie_ist_401(anon_client, dump_attrappe, monkeypatch):
+    monkeypatch.setenv("BACKUP_TRIGGER_TOKEN", TOKEN)
+    assert anon_client.post(BACKUP_TRIGGER_PATH).status_code == 401
+
+
+def test_ohne_konfigurierten_token_bleibt_nur_das_cookie(anon_client, dump_attrappe, monkeypatch):
+    """Kein Token in der ENV heisst: der Weg existiert nicht — nicht: offen."""
+    monkeypatch.delenv("BACKUP_TRIGGER_TOKEN", raising=False)
+
+    assert anon_client.post(BACKUP_TRIGGER_PATH).status_code == 401
+    assert (
+        anon_client.post(BACKUP_TRIGGER_PATH, headers={"Authorization": "Bearer "}).status_code
+        == 401
+    )
+    assert (
+        anon_client.post(
+            BACKUP_TRIGGER_PATH, headers={"Authorization": "Bearer irgendwas"}
+        ).status_code
+        == 401
+    )
+
+
+def test_trigger_geht_auch_mit_sitzung(client, dump_attrappe, monkeypatch):
+    monkeypatch.delenv("BACKUP_TRIGGER_TOKEN", raising=False)
+    assert client.post(BACKUP_TRIGGER_PATH).status_code == 201
+
+
+def test_trigger_meldet_fehlkonfiguration_als_500(anon_client, backup_verzeichnis, monkeypatch):
+    """Ohne Passphrase entsteht kein Dump — und kein stiller Erfolg."""
+    monkeypatch.setenv("BACKUP_TRIGGER_TOKEN", TOKEN)
+    monkeypatch.delenv("BACKUP_PASSPHRASE", raising=False)
+
+    antwort = anon_client.post(BACKUP_TRIGGER_PATH, headers={"Authorization": f"Bearer {TOKEN}"})
+
+    assert antwort.status_code == 500
+    assert "BACKUP_PASSPHRASE" in antwort.json()["detail"]
+    assert backups.list_backups() == []

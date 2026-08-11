@@ -16,6 +16,7 @@ from sqlalchemy import func, select
 from starlette.background import BackgroundTask
 
 from app.core.db import DbSession, get_sessionmaker
+from app.jobs.backup_dump import run_backup
 from app.models.core import BackupDownload
 from app.schemas.backups import BackupEntry, BackupList
 from app.services.backups import (
@@ -61,6 +62,38 @@ def list_backup_files(db: DbSession) -> BackupList:
         entries=eintraege,
         stale_count=sum(1 for e in eintraege if e.stale),
         keep=KEEP_BACKUPS,
+    )
+
+
+@router.post("/create", response_model=BackupEntry, status_code=status.HTTP_201_CREATED)
+def create_backup() -> BackupEntry:
+    """Loest den Dump aus — denselben Codepfad wie `python -m app.jobs.backup_dump`.
+
+    Der Dump laeuft hier im API-Service, weil Railway keine geteilten Volumes
+    kennt (ADR 0004, AP15.1): Das Volume haengt am API-Service, also muss der
+    Schreiber dort laufen. Ausgeloest wird per Cron ueber HTTP.
+
+    Erreichbar mit Sitzungs-Cookie oder mit dem Bearer-Token aus
+    BACKUP_TRIGGER_TOKEN; die Pruefung sitzt in der globalen Auth-Dependency.
+    """
+    try:
+        ergebnis = run_backup()
+    except BackupError as exc:
+        # Fehlende Passphrase oder fehlendes Programm ist Fehlkonfiguration
+        # des Dienstes, nicht ein Fehler des Aufrufers.
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
+        ) from exc
+
+    pfad = ergebnis.path
+    return BackupEntry(
+        name=pfad.name,
+        size_bytes=pfad.stat().st_size,
+        created_at=created_at(pfad.name),
+        downloaded_at=None,
+        # Frisch erzeugt und noch nicht heruntergeladen: noch nicht veraltet,
+        # aber eben auch noch nicht ausserhalb von Railway.
+        stale=is_stale(pfad.name, None),
     )
 
 

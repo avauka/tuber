@@ -25,9 +25,37 @@ provider-unabhängiges Backup nicht optional.
 
 ---
 
+## Nachtrag 2026-08-11 (AP15.1): kein geteiltes Volume
+
+Der ursprüngliche Entwurf — ein eigener `backup-cron`-Service schreibt, der
+API-Service liest — ist auf Railway **nicht umsetzbar**: Ein Volume gehört
+genau einem Service, geteilte Volumes gibt es nicht und sind nicht geplant
+(verifiziert 2026-08-11).
+
+Damit gibt es nur zwei Wege, und beide bedingen dasselbe: Wer den Dump
+schreibt, muss dort laufen, wo das Volume hängt. Das Volume gehört dem
+API-Service, weil der Download-Endpunkt es lesen muss — **also läuft der Dump
+im API-Service**. Der Cron ruft ihn per HTTP an
+(`POST /api/backups/create`) und braucht dafür weder Datenbankzugang noch ein
+eigenes Volume, nur `BASE_URL` und `BACKUP_TRIGGER_TOKEN`.
+
+Ausgelöst wird über die normale Auth-Dependency: Sitzungs-Cookie **oder**
+Bearer-Token. Ist `BACKUP_TRIGGER_TOKEN` nicht gesetzt, existiert der
+Token-Weg nicht — der Endpunkt ist dann nur per Cookie erreichbar, nie offen.
+
+**Ehrlich benannt:** `pg_dump` belastet damit kurzzeitig den API-Container —
+CPU und Speicher gehen für die Dauer des Dumps an einen synchronen Request.
+Bei einer Single-User-App mit einer Datenbank im zweistelligen Megabyte-Bereich
+sind das Sekunden, und niemand wartet nebenher auf eine Antwort. Bei
+nennenswerter Last oder mehreren Nutzern wäre das die falsche Bauweise.
+
+`python -m app.jobs.backup_dump` bleibt lauffähig — für den lokalen Gebrauch
+und den Restore-Drill. Als Cron-Ziel dient es nicht mehr.
+
 ## Umsetzung (AP15)
 
-Ein Cron-Service ruft täglich `python -m app.jobs.backup_dump`. `pg_dump -Fc`
+Ein Cron-Service löst täglich `POST /api/backups/create` aus (bis AP15.1:
+`python -m app.jobs.backup_dump` in einem eigenen Service). `pg_dump -Fc`
 schreibt in eine Pipe, `gpg` verschlüsselt symmetrisch mit AES256. Der
 Klartext berührt nie das Dateisystem — ein abgebrochener Lauf würde sonst
 einen unverschlüsselten Dump mit allen Fundkoordinaten auf dem Volume

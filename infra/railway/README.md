@@ -40,7 +40,12 @@ In der Produktion bleibt die Variable ungesetzt.
 | `PostGIS` | Railway-Template PostGIS | PostgreSQL 16 + PostGIS 3.4, persistentes Volume |
 | `tuber` | GitHub-Repo, `backend/Dockerfile` | FastAPI hinter Railway-TLS |
 | `wetter-cron` | **dasselbe Image** | täglicher Open-Meteo-Ingest |
-| `backup-cron` | **dasselbe Image** | verschlüsselter Dump (ADR 0004) |
+| `backup-cron` | **dasselbe Image** | löst den Dump per HTTP aus (ADR 0004) |
+
+Railway kennt **keine geteilten Volumes** — ein Volume gehört genau einem
+Service (verifiziert 2026-08-11). Das Volume hängt deshalb am Service `tuber`
+(Mount `/data`), und der Dump wird dort geschrieben. `backup-cron` klopft nur
+per HTTP an und braucht selbst kein Volume.
 
 `wetter-cron` ist bewusst kein eigenes Image: Der Job importiert dieselben
 Modelle und dieselbe Scoring-Engine wie die API. Zwei Images hiessen zwei
@@ -69,7 +74,9 @@ Kommt vom Template. Railway stellt `DATABASE_URL` als Referenz bereit.
 | `MEDIA_ROOT` | Pfad auf dem Media-Volume, z. B. `/data/media` | ab AP13 |
 | `BASEMAP_PMTILES_PATH` | Pfad auf dem Volume, z. B. `/data/basemap.pmtiles` | ab AP10 |
 | `DOCS_ENABLED` | **nicht setzen** — öffnet die Schema-Oberfläche | nein |
-| `BACKUP_DIR` | dieselbe Ablage wie `backup-cron`, z. B. `/data/backups` | ab AP15 |
+| `BACKUP_DIR` | Ablage auf dem Volume, Standard `/data/backups` | ab AP15 |
+| `BACKUP_PASSPHRASE` | symmetrische GPG-Passphrase für den Dump | ab AP15 |
+| `BACKUP_TRIGGER_TOKEN` | Bearer-Token, mit dem der Cron auslöst | ab AP15 |
 
 Fehlen `SESSION_SECRET` oder `AUTH_PASSWORD_HASH`, antwortet der Login mit
 `500` statt jemanden durchzulassen — eine Fehlkonfiguration soll laut
@@ -96,13 +103,12 @@ Kein API-Key: Open-Meteo ist bei nicht-kommerzieller Nutzung schlüssellos
 
 | Variable | Wert | Pflicht |
 |---|---|---|
-| `DATABASE_URL` | Referenz auf `PostGIS` | ja |
-| `BACKUP_PASSPHRASE` | symmetrische GPG-Passphrase | **ja** |
-| `BACKUP_DIR` | Ablage auf dem Volume, z. B. `/data/backups` | ja |
+| `BASE_URL` | öffentliche Domain des API-Service | ja |
+| `BACKUP_TRIGGER_TOKEN` | derselbe Token wie am Service `tuber` | ja |
 
-Details, Zeitplan und Exit-Codes: [`backup-cron.md`](backup-cron.md).
-Der API-Service braucht `BACKUP_DIR` ebenfalls und dasselbe Volume — der
-Cron schreibt, der Download-Endpunkt liest.
+Kein `DATABASE_URL`, kein `BACKUP_PASSPHRASE`, kein Volume — der Job löst nur
+`POST /api/backups/create` aus. Details, Zeitplan, Exit-Codes und der
+Notausgang bei Schreibrechten: [`backup-cron.md`](backup-cron.md).
 
 ## Healthcheck
 

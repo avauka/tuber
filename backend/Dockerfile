@@ -37,9 +37,17 @@ COPY . .
 RUN uv sync --locked --no-dev --no-editable \
     && chmod +x entrypoint.sh
 
-# Non-root. Die Anwendung schreibt nichts ins Dateisystem; /app und das venv
-# gehoeren weiterhin root und bleiben damit fuer den Dienst unveraenderlich.
+# Non-root. /app und das venv gehoeren weiterhin root und bleiben damit fuer
+# den Dienst unveraenderlich.
 RUN useradd --create-home --uid 10001 tuber
+
+# Einziger beschreibbarer Ort: die Backup-Ablage auf dem Volume (AP15.1).
+# Achtung: Haengt Railway das Volume nach /data, verdeckt es dieses
+# Verzeichnis samt Eigentuemer. Reicht das nicht, ist RAILWAY_RUN_UID=0 der
+# dokumentierte Notausgang — siehe infra/railway/README.md.
+ENV BACKUP_DIR=/data/backups
+RUN mkdir -p /data/backups && chown -R tuber:tuber /data
+
 USER tuber
 
 # Railway setzt PORT selbst; 8000 ist nur der lokale Standard.
