@@ -9,6 +9,13 @@ Paket, Präfix `APx:`. Bei Unklarheiten: anhalten und fragen, nicht raten.
 `uv run ruff format --check .` sind beide repo-weit leer. Nicht nur die neu
 geschriebene Datei.
 
+**Geometrie-Konvention (Managemententscheidung, bleibt so):** Punkte gehen als
+`lat`/`lon` über die API, Flächen und Linien als GeoJSON. Funde und Signale
+sind Punkte und behalten deshalb ihre zwei Zahlenfelder; Gebiete, Tracks und
+Coverage tragen ein `geometry`-Objekt. Die Mischung ist gewollt — für einen
+Ein-Tap-Fund im Feld wäre ein GeoJSON-Objekt Umstand ohne Gegenwert, für ein
+Polygon wären Koordinatenpaare unbrauchbar.
+
 Reihenfolge-Logik: Backend-Kern zuerst (AP1–AP7), dann Auth (AP8) und ein
 **früher Railway-Deploy (AP9)** — bewusst vor dem Feld-UI, weil
 `getCurrentPosition` einen Secure Context verlangt und das iPhone die App
@@ -81,6 +88,10 @@ aktuellen Protomaps-Build, Bbox Aachen/Eifel/Ardennen, Ablage
 `data/basemap.pmtiles`, Attribution OSM+Protomaps sichtbar). Planer:
 Karte, Fundliste, Login. Vitest-Setup.
 
+**Ausserdem `GET /api/signals`** (bbox/from/to analog zu `GET /api/finds`) —
+der Endpunkt fehlt bisher komplett, die Planer-Karte braucht ihn. Invariante 8
+gilt: keine Standardfilter, die Indikatorarten ausblenden. Tests ergänzen.
+
 ## AP11 — Feldmodus-UI
 Spec §7, nicht verhandelbar: Vollbildkarte, 3 Buttons (72-px-Targets,
 Daumenzone), Ein-Tap-Logging in IndexedDB-Queue, GPS-Genauigkeit
@@ -98,6 +109,20 @@ iOS-Safari — Ergebnis als ADR-0003-Update dokumentieren.
 ## AP13 — Media + Nachbearbeitung
 `POST /api/media` (Foto/Voice, komprimiert, verzögert), Fund-Detail im
 Planer, `id_pending`-Liste, geführte Foto-Sequenz (Spec §4a).
+
+**Enthält ausdrücklich `PATCH /api/finds/{id}`** (Spec §12) — bisher gibt es
+nur POST und GET, und ohne PATCH bleibt die Nachbearbeitung Theorie.
+Regeln:
+
+- `species_guess`, `species_confidence`, `phenotype`, `id_pending`,
+  `maturity`, `calcium_reaction` und `notes` sind hier änderbar. Genau dafür
+  existiert der Endpunkt: Die Artbestimmung entsteht nach dem Feldgang, nicht
+  währenddessen (Invariante 6).
+- `revisit_due` bleibt serverseitig aus `found_at` abgeleitet (Spec §10) und
+  ist **nicht von aussen setzbar** — ein durchgereichter Wert wird ignoriert
+  bzw. abgelehnt, nicht übernommen.
+- Ebenso wenig setzbar: `client_uuid`, `id`, `created_at`.
+- Tests ergänzen, inklusive des Versuchs, `revisit_due` zu überschreiben.
 
 ## AP14 — Wiederbesuchs-Dashboard
 `GET /api/revisits/due`: Funde räumlich clustern
