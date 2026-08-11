@@ -11,7 +11,17 @@ from fastapi import APIRouter, Depends, FastAPI
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import HTMLResponse
 
-from app.api import areas, auth, conditions, coverage, finds, sessions, signals, tracks
+from app.api import (
+    areas,
+    auth,
+    backups,
+    conditions,
+    coverage,
+    finds,
+    sessions,
+    signals,
+    tracks,
+)
 from app.core.auth import require_session
 from app.core.http_security import SecurityHeadersMiddleware
 
@@ -68,6 +78,7 @@ def create_app() -> FastAPI:
     app.include_router(areas.router)
     app.include_router(sessions.router)
     app.include_router(conditions.router)
+    app.include_router(backups.router)
 
     if docs_enabled():
         app.include_router(_docs_router(app))

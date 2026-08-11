@@ -17,11 +17,13 @@ angeleitet; hier steht, **was** am Ende stehen soll.
 | Volume-Backups | **nicht aktiv** — nur im Pro-Plan (ADR 0004) |
 | Schema-Oberfläche | seit AP9c standardmässig aus |
 
-### Offen: kein Backup
+### Backup
 
-Volume-Backups gibt es auf dem aktuellen Plan nicht. Damit ist **AP15**
-(wöchentlicher `pg_dump` off-platform) die einzige Sicherung — und muss
-stehen, bevor die ersten Felddaten entstehen. Siehe Nachtrag in ADR 0004.
+Volume-Backups gibt es auf dem aktuellen Plan nicht (kein Pro-Plan,
+entschieden 2026-08-10). Der verschlüsselte Dump aus AP15 ist damit die
+einzige Sicherung. Er ist umgesetzt; einzurichten bleibt der
+`backup-cron`-Service samt Volume — und der **regelmässige Download**, ohne
+den der Dump Railway nie verlässt.
 
 ### Schema-Oberfläche
 
@@ -35,9 +37,10 @@ In der Produktion bleibt die Variable ungesetzt.
 
 | Service | Herkunft | Zweck |
 |---|---|---|
-| `db` | Railway-Template PostGIS | PostgreSQL 16 + PostGIS 3.4, persistentes Volume |
-| `api` | GitHub-Repo, `backend/Dockerfile` | FastAPI hinter Railway-TLS |
-| `wetter-cron` | **dasselbe Image** wie `api` | täglicher Open-Meteo-Ingest |
+| `PostGIS` | Railway-Template PostGIS | PostgreSQL 16 + PostGIS 3.4, persistentes Volume |
+| `tuber` | GitHub-Repo, `backend/Dockerfile` | FastAPI hinter Railway-TLS |
+| `wetter-cron` | **dasselbe Image** | täglicher Open-Meteo-Ingest |
+| `backup-cron` | **dasselbe Image** | verschlüsselter Dump (ADR 0004) |
 
 `wetter-cron` ist bewusst kein eigenes Image: Der Job importiert dieselben
 Modelle und dieselbe Scoring-Engine wie die API. Zwei Images hiessen zwei
@@ -66,6 +69,7 @@ Kommt vom Template. Railway stellt `DATABASE_URL` als Referenz bereit.
 | `MEDIA_ROOT` | Pfad auf dem Media-Volume, z. B. `/data/media` | ab AP13 |
 | `BASEMAP_PMTILES_PATH` | Pfad auf dem Volume, z. B. `/data/basemap.pmtiles` | ab AP10 |
 | `DOCS_ENABLED` | **nicht setzen** — öffnet die Schema-Oberfläche | nein |
+| `BACKUP_DIR` | dieselbe Ablage wie `backup-cron`, z. B. `/data/backups` | ab AP15 |
 
 Fehlen `SESSION_SECRET` oder `AUTH_PASSWORD_HASH`, antwortet der Login mit
 `500` statt jemanden durchzulassen — eine Fehlkonfiguration soll laut
@@ -87,6 +91,18 @@ Das Klartextpasswort gehört nirgendwohin ausser in deinen Passwortmanager.
 
 Kein API-Key: Open-Meteo ist bei nicht-kommerzieller Nutzung schlüssellos
 (Spec §5). Kein `SESSION_SECRET` — der Job spricht kein HTTP an.
+
+### Service `backup-cron`
+
+| Variable | Wert | Pflicht |
+|---|---|---|
+| `DATABASE_URL` | Referenz auf `PostGIS` | ja |
+| `BACKUP_PASSPHRASE` | symmetrische GPG-Passphrase | **ja** |
+| `BACKUP_DIR` | Ablage auf dem Volume, z. B. `/data/backups` | ja |
+
+Details, Zeitplan und Exit-Codes: [`backup-cron.md`](backup-cron.md).
+Der API-Service braucht `BACKUP_DIR` ebenfalls und dasselbe Volume — der
+Cron schreibt, der Download-Endpunkt liest.
 
 ## Healthcheck
 

@@ -5,6 +5,17 @@ FROM python:3.12-slim
 # des Installers selbst.
 COPY --from=ghcr.io/astral-sh/uv:0.12.2 /uv /uvx /bin/
 
+# Beides fehlt im Basis-Image und beides braucht der Backup-Job (AP15):
+#   postgresql-client -> pg_dump -Fc (ADR 0004)
+#   gnupg             -> symmetrische Verschluesselung des Dumps
+# Bewusst das Standard-gpg statt einer Python-Bibliothek: Ein Backup muss in
+# Jahren noch lesbar sein, notfalls ohne diesen Code. Eine .gpg-Datei
+# entschluesselt jede beliebige gpg-Installation; ein selbstgebautes Format
+# waere auf genau dieses Repository angewiesen.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends postgresql-client gnupg \
+    && rm -rf /var/lib/apt/lists/*
+
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     UV_COMPILE_BYTECODE=1 \

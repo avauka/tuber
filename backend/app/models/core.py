@@ -237,3 +237,21 @@ class ConditionsSnapshot(Base):
     # Roharchiv der API-Antwort. Bewusst nur Archiv: gelesen wird aus den
     # Spalten, damit kein JSONB-Schluessel zur stillen Verabredung wird.
     raw: Mapped[dict | None] = mapped_column(JSONB)
+
+
+class BackupDownload(Base):
+    """Nachweis, dass ein Dump das Volume verlassen hat (ADR 0004, AP15).
+
+    Nicht im Spec — Spec §4 kennt keine Backup-Tabelle. Ohne diesen Nachweis
+    laesst sich aber nicht unterscheiden, ob ein Dump nur existiert oder
+    tatsaechlich off-platform liegt; genau das ist der Unterschied zwischen
+    einem Backup und einer Datei auf demselben Volume.
+    """
+
+    __tablename__ = "backup_download"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    filename: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    downloaded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
