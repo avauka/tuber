@@ -109,10 +109,11 @@ psql -d tuber_restore -c 'SELECT count(*) FROM find;'
 
 Zu beachten:
 
-- `spatial_ref_sys` ist **nicht** im Dump. Die Tabelle füllt
-  `CREATE EXTENSION postgis` selbst; im Dump würde sie beim Einspielen mit
-  den bereits vorhandenen Zeilen kollidieren. Eigene SRIDs gibt es nicht
-  (EPSG:4326 und 25832 sind Standard).
+- **Fremddaten der PostGIS-Erweiterungen sind nicht im Dump:** die Tabelle
+  `public.spatial_ref_sys` sowie die Schemas `topology`, `tiger` und
+  `tiger_data`. Alle vier gehören den Erweiterungen, nicht dem Projekt, und
+  entstehen auf der Zielseite durch `CREATE EXTENSION` von selbst. Näheres im
+  Nachtrag zu AP15.3.
 - Der Dump enthält `alembic_version`. Nach dem Restore steht das Schema auf
   genau dem Stand des Dumps — `alembic upgrade head` bringt es bei Bedarf
   nach vorn.
@@ -147,6 +148,34 @@ Zwei Konsequenzen:
    mit `current_setting('server_version_num')` und **bricht bei Abweichung
    ab**. Ein Backup, das sich nicht zurückspielen lässt, muss laut scheitern
    statt still zu entstehen.
+
+### Nachtrag 2026-08-11 (AP15.3): Erweiterungs-Schemas raus
+
+Der erste echte Cross-Client-Restore zeigte Fehlermeldungen im Log. Ursache:
+PostGIS markiert Teile seiner Erweiterungen als *Konfigurationstabellen*,
+deren Daten `pg_dump` trotz Extension-Zugehörigkeit mitnimmt.
+
+| Objekt | Fehler beim Restore |
+|---|---|
+| `topology.topology`, `topology.layer` | `column "useslargeids" ... does not exist` — die Spalten unterscheiden sich zwischen PostGIS-Minor-Versionen |
+| `tiger`, `tiger_data` | `schema "tiger" already exists` |
+
+Keiner der Fälle bricht `pg_restore` ab. Aber ein Fehler im Restore-Log ist
+genau das, was im Ernstfall Unsicherheit erzeugt — dann, wenn man sie am
+wenigsten gebrauchen kann. Wer nicht sicher weiss, ob die Wiederherstellung
+vollständig war, hat kein Backup, sondern eine Vermutung.
+
+Ausgeschlossen werden deshalb die Schemas `topology`, `tiger` und
+`tiger_data` (zusätzlich zur bereits ausgenommenen `spatial_ref_sys`). Das
+Projekt nutzt weder Topologie noch den Geocoder; beide entstehen auf der
+Zielseite durch `CREATE EXTENSION`.
+
+Der `tiger`-Teil kam bei der Verifikation dieses Pakets zutage: Er ist
+dieselbe Fehlerklasse und wäre sonst als eigener Nachtrag wiedergekommen.
+
+**Nachgemessen:** `pg_restore` in eine frische Datenbank mit allen drei
+PostGIS-Erweiterungen — **Exit-Code 0, stderr vollständig leer**. Vorher:
+Exit-Code 1, zwei Fehlermeldungen.
 
 ### Restore-Drill (Punkt 3), durchgeführt 2026-08-11
 

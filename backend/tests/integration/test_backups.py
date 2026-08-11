@@ -202,6 +202,31 @@ def test_server_hauptversion_kommt_aus_der_datenbank(backup_verzeichnis):
     assert backup_dump._server_major() >= 12
 
 
+# ------------------------------- Ausgeschlossene Fremddaten (AP15.3)
+
+
+def test_dump_schliesst_postgis_referenzdaten_aus():
+    """Ohne diese Ausschluesse meldet der Restore Fehler.
+
+    spatial_ref_sys kollidiert mit den Zeilen, die CREATE EXTENSION postgis
+    selbst anlegt; topology scheitert am COPY zwischen PostGIS-Minor-
+    Versionen; tiger/tiger_data laufen in "schema already exists". Keiner der
+    Faelle bricht den Restore ab — aber jeder erzeugt eine Fehlermeldung im
+    Log, und im Ernstfall ist das der Unterschied zwischen Vertrauen und
+    Zweifel.
+    """
+    befehl = backup_dump._pg_dump_command("postgresql+psycopg://u:p@h:5432/db")
+
+    assert "--exclude-table=public.spatial_ref_sys" in befehl
+    for schema in ("topology", "tiger", "tiger_data"):
+        assert f"--exclude-schema={schema}" in befehl
+
+
+def test_dump_befehl_nutzt_die_libpq_form():
+    befehl = backup_dump._pg_dump_command("postgresql+psycopg://u:p@h:5432/db")
+    assert befehl[-1] == "postgresql://u:p@h:5432/db"
+
+
 # -------------------------------------------------------------- Endpunkte
 
 

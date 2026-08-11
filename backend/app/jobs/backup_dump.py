@@ -36,6 +36,19 @@ PARTIAL_SUFFIX = ".part"
 
 CIPHER = "AES256"
 
+# Schemas, die zu PostGIS-Erweiterungen gehoeren und keine Projektdaten
+# enthalten (AP15.3). PostGIS markiert Teile davon als Konfigurationstabellen,
+# deshalb landen ihre Daten trotz Extension-Zugehoerigkeit im Dump — und
+# erzeugen beim Restore Fehlermeldungen:
+#   topology            -> COPY scheitert an abweichenden Spalten zwischen
+#                          PostGIS-Minor-Versionen ("column useslargeids ...")
+#   tiger, tiger_data   -> "schema already exists", wenn das Ziel die
+#                          Erweiterung bereits hat
+# pg_restore laeuft danach zwar weiter, aber ein Fehler im Restore-Log ist
+# genau das, was im Ernstfall Unsicherheit erzeugt. Das Projekt nutzt weder
+# Topologie noch den Geocoder.
+EXCLUDED_SCHEMAS = ("topology", "tiger", "tiger_data")
+
 
 @dataclass(frozen=True)
 class BackupResult:
@@ -116,6 +129,7 @@ def _pg_dump_command(url: str) -> list[str]:
         # bereits vorhandenen Zeilen kollidieren. (Eigene SRIDs gibt es
         # nicht — das Projekt nutzt EPSG:4326 und 25832.)
         "--exclude-table=public.spatial_ref_sys",
+        *(f"--exclude-schema={schema}" for schema in EXCLUDED_SCHEMAS),
         libpq_url,
     ]
 
