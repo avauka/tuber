@@ -6,15 +6,35 @@ FROM python:3.12-slim
 COPY --from=ghcr.io/astral-sh/uv:0.12.2 /uv /uvx /bin/
 
 # Beides fehlt im Basis-Image und beides braucht der Backup-Job (AP15):
-#   postgresql-client -> pg_dump -Fc (ADR 0004)
-#   gnupg             -> symmetrische Verschluesselung des Dumps
+#   postgresql-client-16 -> pg_dump -Fc (ADR 0004)
+#   gnupg                -> symmetrische Verschluesselung des Dumps
 # Bewusst das Standard-gpg statt einer Python-Bibliothek: Ein Backup muss in
 # Jahren noch lesbar sein, notfalls ohne diesen Code. Eine .gpg-Datei
 # entschluesselt jede beliebige gpg-Installation; ein selbstgebautes Format
 # waere auf genau dieses Repository angewiesen.
+#
+# HAUPTVERSION 16, festgenagelt (AP15.2): Sie muss zur Produktions-DB passen.
+# pg_dump 17 schreibt Archivformat 1.16, das pg_restore 16 mit "unsupported
+# version in file header" ablehnt — das Backup waere unbrauchbar, ohne dass
+# es beim Erstellen auffaellt. Debian trixie liefert nur Client 17, deshalb
+# das PGDG-Repo. Das generische "postgresql-client" waere beim naechsten
+# Basis-Image stillschweigend weitergewandert; genau so ist der Fehler
+# entstanden.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends postgresql-client gnupg \
+    && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
+    && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+        | gpg --dearmor -o /usr/share/keyrings/pgdg.gpg \
+    && . /etc/os-release \
+    && echo "deb [signed-by=/usr/share/keyrings/pgdg.gpg]" \
+        "http://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
+        > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends postgresql-client-16 \
+    && apt-get purge -y --auto-remove curl \
     && rm -rf /var/lib/apt/lists/*
+
+# pg_dump aus dem versionierten Paket liegt nicht im PATH.
+ENV PATH="/usr/lib/postgresql/16/bin:$PATH"
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \

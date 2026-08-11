@@ -102,8 +102,23 @@ Der Upload zu einem externen Ziel bleibt bewusst Handarbeit: Ein
 automatischer Upload bräuchte Zugangsdaten für das Sicherungsziel im selben
 Container — und damit läge der Schlüssel dort, wo der Verlust droht.
 
+## Client-Hauptversion
+
+Das Image bringt **`postgresql-client-16`** mit, passend zur Produktions-DB.
+Vor jedem Dump vergleicht der Job die Hauptversion von `pg_dump` mit der des
+Servers und **bricht bei Abweichung ab** (AP15.2): Ein Dump im neueren
+Archivformat liesse sich mit dem passenden `pg_restore` nicht einspielen.
+
+Wird die Datenbank je auf PostgreSQL 17 gehoben, schlägt das Backup ab dem
+ersten Lauf fehl, bis die Client-Version im `backend/Dockerfile` nachgezogen
+ist. Das ist Absicht.
+
 ## Lokal und für den Restore-Drill
 
 `python -m app.jobs.backup_dump` schreibt den Dump direkt, ohne HTTP. Für den
 lokalen Gebrauch und den Restore-Drill (ADR 0004) weiterhin der richtige Weg —
 als Cron-Ziel auf Railway nicht mehr.
+
+Zum Wiederherstellen auf dem eigenen Rechner: `gpg` wird gebraucht
+(`winget install GnuPG.Gpg4win`) und ein `pg_restore` der Hauptversion 16.
+Am einfachsten das Projekt-Image, das beides mitbringt.

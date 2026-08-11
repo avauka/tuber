@@ -148,6 +148,60 @@ def test_fehlende_programme_werden_benannt(backup_verzeichnis, monkeypatch):
         backup_dump.run_backup()
 
 
+# ------------------------------------------- Versionsabgleich (AP15.2)
+
+
+@pytest.mark.parametrize(
+    ("ausgabe", "erwartet"),
+    [
+        ("pg_dump (PostgreSQL) 16.14 (Debian 16.14-1.pgdg13+1)\n", 16),
+        ("pg_dump (PostgreSQL) 17.10 (Debian 17.10-0+deb13u1)\n", 17),
+        ("pg_dump (PostgreSQL) 16.4\n", 16),
+    ],
+)
+def test_pg_dump_version_wird_gelesen(ausgabe, erwartet):
+    assert backup_dump.parse_pg_dump_major(ausgabe) == erwartet
+
+
+def test_unlesbare_version_schlaegt_fehl():
+    with pytest.raises(BackupError, match="nicht lesbar"):
+        backup_dump.parse_pg_dump_major("irgendwas anderes")
+
+
+def test_neuerer_client_als_server_bricht_ab(backup_verzeichnis, monkeypatch):
+    """Der Fund aus dem Restore-Drill: pg_dump 17 gegen Server 16.
+
+    Ein Dump im neueren Archivformat laesst sich mit dem passenden
+    pg_restore nicht einspielen. Das faellt sonst erst beim Wiederherstellen
+    auf — im denkbar schlechtesten Moment.
+    """
+    monkeypatch.setenv("BACKUP_PASSPHRASE", "geheim")
+    monkeypatch.setattr(backup_dump.shutil, "which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr(backup_dump, "_pg_dump_major", lambda: 17)
+    monkeypatch.setattr(backup_dump, "_server_major", lambda: 16)
+
+    with pytest.raises(BackupError, match="Versionskonflikt"):
+        backup_dump.run_backup()
+
+    # Kein halbes Backup zurueckgelassen.
+    assert list(backup_verzeichnis.iterdir()) == []
+
+
+def test_aelterer_client_als_server_bricht_ebenfalls_ab(backup_verzeichnis, monkeypatch):
+    monkeypatch.setenv("BACKUP_PASSPHRASE", "geheim")
+    monkeypatch.setattr(backup_dump.shutil, "which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr(backup_dump, "_pg_dump_major", lambda: 15)
+    monkeypatch.setattr(backup_dump, "_server_major", lambda: 16)
+
+    with pytest.raises(BackupError, match="Versionskonflikt"):
+        backup_dump.run_backup()
+
+
+def test_server_hauptversion_kommt_aus_der_datenbank(backup_verzeichnis):
+    """Gegen die echte Test-DB: die Zahl muss plausibel sein."""
+    assert backup_dump._server_major() >= 12
+
+
 # -------------------------------------------------------------- Endpunkte
 
 

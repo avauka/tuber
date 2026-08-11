@@ -13,6 +13,7 @@ schlimmer als ein fehlendes, weil man sich auf es verlaesst.
 """
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -21,7 +22,9 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from app.core.db import database_url
+from sqlalchemy import text
+
+from app.core.db import database_url, get_sessionmaker
 from app.services.backups import BackupError, backup_dir, build_name, list_backups, rotate
 
 REQUIRED_TOOLS = ("pg_dump", "gpg")
@@ -54,6 +57,49 @@ def _require_tools() -> None:
     if fehlend:
         raise BackupError(
             f"Benoetigte Programme fehlen im Image: {', '.join(fehlend)}. Siehe backend/Dockerfile."
+        )
+
+
+def parse_pg_dump_major(ausgabe: str) -> int:
+    """Hauptversion aus `pg_dump --version`.
+
+    Format: "pg_dump (PostgreSQL) 16.14 (Debian 16.14-1.pgdg13+1)".
+    """
+    treffer = re.search(r"\(PostgreSQL\)\s+(\d+)", ausgabe)
+    if treffer is None:
+        raise BackupError(f"Version von pg_dump nicht lesbar: {ausgabe.strip()!r}")
+    return int(treffer.group(1))
+
+
+def _pg_dump_major() -> int:
+    ergebnis = subprocess.run(["pg_dump", "--version"], capture_output=True, text=True, check=True)
+    return parse_pg_dump_major(ergebnis.stdout)
+
+
+def _server_major() -> int:
+    with get_sessionmaker()() as db:
+        # server_version_num ist 160014 fuer 16.14 — robuster als der
+        # Anzeigetext, der je nach Distribution Zusaetze traegt.
+        nummer = db.execute(text("SELECT current_setting('server_version_num')")).scalar_one()
+    return int(nummer) // 10000
+
+
+def _require_matching_major() -> None:
+    """Ein Dump, den der Zielserver nicht einlesen kann, ist kein Backup.
+
+    pg_dump schreibt das Archivformat seiner eigenen Version. Ist der Client
+    neuer als der Server, laesst sich das Ergebnis mit dem passenden
+    pg_restore nicht mehr einspielen ("unsupported version in file header").
+    Das faellt beim Erstellen nicht auf — nur beim Wiederherstellen, also im
+    denkbar schlechtesten Moment. Deshalb hier, laut und vorher.
+    """
+    dump_major = _pg_dump_major()
+    server_major = _server_major()
+    if dump_major != server_major:
+        raise BackupError(
+            f"Versionskonflikt: pg_dump ist {dump_major}, der Server ist PostgreSQL "
+            f"{server_major}. Der Dump waere mit pg_restore {server_major} nicht "
+            "einspielbar. Client-Hauptversion im backend/Dockerfile angleichen."
         )
 
 
@@ -130,6 +176,7 @@ def run_backup(now: datetime | None = None) -> BackupResult:
     """
     passphrase = _passphrase()
     _require_tools()
+    _require_matching_major()
 
     verzeichnis = backup_dir()
     verzeichnis.mkdir(parents=True, exist_ok=True)

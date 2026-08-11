@@ -96,6 +96,17 @@ psql -d tuber_restore -c 'SELECT version_num FROM alembic_version;'
 psql -d tuber_restore -c 'SELECT count(*) FROM find;'
 ```
 
+### Voraussetzungen auf dem Rechner, der wiederherstellt
+
+- **`gpg` muss installiert sein.** Unter Windows:
+  `winget install GnuPG.Gpg4win`. Ohne gpg ist die Datei nicht zu öffnen —
+  der Code aus diesem Repository hilft dabei nicht, und soll es auch nicht
+  (das ist gerade der Sinn des Standardformats).
+- **Die Hauptversion von `pg_restore` muss zur Server-Hauptversion passen**
+  (aktuell **16**). Das ist keine Empfehlung, sondern Bedingung — siehe den
+  Nachtrag unten. Am einfachsten das Projekt-Image verwenden, das
+  `postgresql-client-16` und `gnupg` mitbringt.
+
 Zu beachten:
 
 - `spatial_ref_sys` ist **nicht** im Dump. Die Tabelle füllt
@@ -105,14 +116,41 @@ Zu beachten:
 - Der Dump enthält `alembic_version`. Nach dem Restore steht das Schema auf
   genau dem Stand des Dumps — `alembic upgrade head` bringt es bei Bedarf
   nach vorn.
-- `pg_dump`/`pg_restore` im Image sind Version 17, der Server ist 16. Diese
-  Richtung ist unterstützt. Zum Wiederherstellen einen Client verwenden, der
-  **mindestens** so neu ist wie der, der den Dump erzeugt hat — am
-  einfachsten dasselbe Image.
 
-### Restore-Drill (Punkt 3), durchgeführt 2026-08-10
+### Nachtrag 2026-08-11 (AP15.2): Client-Hauptversion muss passen
 
-Im Container gegen die Dev-Datenbank verifiziert:
+**Der Drill vom 2026-08-10 hat einen kaputten Zustand durchgewunken.** Das
+Image installierte `postgresql-client` generisch, Debian trixie lieferte
+Version 17, die Produktionsdatenbank ist PostgreSQL 16. pg_dump schreibt das
+Archivformat seiner eigenen Version — ein 17er-Dump lässt sich mit
+`pg_restore 16` **nicht** einspielen:
+
+```
+unsupported version (1.16) in file header
+```
+
+Das Backup war damit faktisch wertlos. Der containerinterne Test konnte es
+nicht zeigen, weil dort beide Werkzeuge Version 17 waren: Er hat den Dump mit
+demselben Client gelesen, der ihn geschrieben hatte, und damit genau den
+Schritt übersprungen, auf den es ankommt.
+
+Die frühere Notiz, Version 17 gegen Server 16 sei „unterstützt", war für das
+Erstellen richtig und für das Wiederherstellen falsch.
+
+Zwei Konsequenzen:
+
+1. Das Dockerfile installiert **`postgresql-client-16`**, Hauptversion
+   festgenagelt. Debian trixie liefert nur 17, deshalb über das PGDG-Repo.
+   Das generische Paket wäre beim nächsten Basis-Image wieder weitergewandert
+   — genau so ist der Fehler entstanden.
+2. `run_backup()` vergleicht vor jedem Dump die Hauptversion von `pg_dump`
+   mit `current_setting('server_version_num')` und **bricht bei Abweichung
+   ab**. Ein Backup, das sich nicht zurückspielen lässt, muss laut scheitern
+   statt still zu entstehen.
+
+### Restore-Drill (Punkt 3), durchgeführt 2026-08-11
+
+Im Container gegen die Dev-Datenbank (PostgreSQL 16.4), Client 16.14:
 
 | Prüfung | Ergebnis |
 |---|---|
@@ -121,7 +159,12 @@ Im Container gegen die Dev-Datenbank verifiziert:
 | Klartextprobe auf `PGDMP` | nicht auffindbar — echt verschlüsselt |
 | Falsche Passphrase | Entschlüsselung abgelehnt |
 | Richtige Passphrase | entschlüsselt sauber |
-| `pg_restore --list` | liest das Archiv, alle 9 Tabellen + `alembic_version` |
+| **`pg_restore` in eine frische DB** | **läuft durch** |
+| Nach dem Restore | `alembic_version` = `67f54b4aa884`, 10 Tabellen, 5 GIST-Indizes |
 
-Offen bleibt der vollständige Drill gegen eine **leere** Zieldatenbank mit
-echten Felddaten. Der ist erst sinnvoll, wenn welche existieren.
+Der Unterschied zum Drill vom Vortag: Es wird nicht mehr nur das Archiv
+gelesen, sondern tatsächlich in eine **leere Zieldatenbank eingespielt**. Nur
+dieser Schritt beweist, dass das Backup etwas wert ist.
+
+Offen bleibt der Drill mit echten Felddaten. Der ist erst sinnvoll, wenn
+welche existieren.
