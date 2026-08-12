@@ -25,6 +25,36 @@ einzige Sicherung. Er ist umgesetzt; einzurichten bleibt der
 `backup-cron`-Service samt Volume — und der **regelmässige Download**, ohne
 den der Dump Railway nie verlässt.
 
+### Frontend im selben Service (ab AP10b)
+
+Das gebaute Frontend liegt im Image unter `/app/static` und wird von FastAPI
+ausgeliefert — gleiche Origin wie die API. Grund: Das Sitzungs-Cookie ist
+httpOnly und `SameSite=Lax` (ADR 0005); bei gleicher Origin geht es ohne
+CORS-Konstruktion mit, und die CSP bleibt eng.
+
+**Einmalige Umstellung im Railway-Dashboard, Service `tuber`:**
+
+| Einstellung | Wert |
+|---|---|
+| Root Directory | **leer** (Repo-Wurzel) — vorher `backend` |
+| Dockerfile Path | `backend/Dockerfile` |
+
+Ohne diese Umstellung schlägt der Build fehl: Die Node-Stage im
+`backend/Dockerfile` braucht `frontend/`, und das liegt ausserhalb von
+`backend/`. Ein `.dockerignore` in der Repo-Wurzel hält den Kontext klein.
+
+Statische Dateien und die Login-Ansicht sind **öffentlich** — sonst käme
+niemand zur Anmeldung. Geschützt bleibt alles unter `/api/`; die globale
+Auth-Dependency ist unverändert. Unbekannte Pfade liefern `index.html`
+(SPA-Fallback), unbekannte `/api/`-Pfade dagegen weiterhin `404`.
+
+Seit AP10b setzt `SecurityHeadersMiddleware` auch eine
+Content-Security-Policy (`default-src 'none'` plus das Nötige, kein fremder
+Host). Der Wortlaut und die Begründung je Direktive stehen in
+`backend/app/core/http_security.py`. Wer dort etwas ändert, prüft es **im
+Browser** nach: Eine zu enge Policy ergibt eine weisse Karte, ohne dass im
+Netzwerk-Tab etwas auffällt.
+
 ### Basiskarte
 
 Der Extract der Basiskarte (ADR 0002, AP10a) läuft **manuell und ohne
@@ -49,7 +79,7 @@ In der Produktion bleibt die Variable ungesetzt.
 | Service | Herkunft | Zweck |
 |---|---|---|
 | `PostGIS` | Railway-Template PostGIS | PostgreSQL 16 + PostGIS 3.4, persistentes Volume |
-| `tuber` | GitHub-Repo, `backend/Dockerfile` | FastAPI hinter Railway-TLS |
+| `tuber` | GitHub-Repo, `backend/Dockerfile` | FastAPI hinter Railway-TLS, liefert auch das Frontend aus |
 | `wetter-cron` | **dasselbe Image** | täglicher Open-Meteo-Ingest |
 | `backup-cron` | **dasselbe Image** | löst den Dump per HTTP aus (ADR 0004) |
 
@@ -83,7 +113,8 @@ Kommt vom Template. Railway stellt `DATABASE_URL` als Referenz bereit.
 | `AUTH_PASSWORD_HASH` | Argon2id-Hash (siehe unten) | ja |
 | `PORT` | setzt Railway selbst | — |
 | `MEDIA_ROOT` | Pfad auf dem Media-Volume, z. B. `/data/media` | ab AP13 |
-| `BASEMAP_PMTILES_PATH` | Pfad auf dem Volume, z. B. `/data/basemap.pmtiles` | ab AP10 |
+| `BASEMAP_DIR` | Ablage der Basiskarte, Standard `/data` | nein |
+| `FRONTEND_DIST` | gebautes Frontend, Standard `/app/static` | nein |
 | `DOCS_ENABLED` | **nicht setzen** — öffnet die Schema-Oberfläche | nein |
 | `BACKUP_DIR` | Ablage auf dem Volume, Standard `/data/backups` | ab AP15 |
 | `BACKUP_PASSPHRASE` | symmetrische GPG-Passphrase für den Dump | ab AP15 |

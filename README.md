@@ -22,3 +22,22 @@ Invarianten: `CLAUDE.md`. Infrastruktur-Entscheidungen: `docs/decisions/`.
 
 Die Dev-DB hängt auf **Host-Port 5433**, nicht 5432: Port 5432 ist lokal von
 einer nativen PostgreSQL-Installation belegt. Im Container bleibt es 5432.
+
+`pnpm dev` schiebt `/api` an `127.0.0.1:8000` weiter; dort muss also das
+Backend laufen (aus `backend/`: `uv run uvicorn app.main:app --port 8000`).
+
+Für die Karte braucht es lokal ein Basiskarten-Archiv auf der Platte:
+
+    cd backend && BASEMAP_DIR=./data BASEMAP_BUILD_DATE=<JJJJMMTT> \
+        uv run python -m app.jobs.basemap_extract
+
+Das aktuelle Build-Datum steht auf <https://maps.protomaps.com/builds>. Das
+Archiv sind rund 208 MB und liegt wie das ganze `backend/data/` ausserhalb der
+Versionsverwaltung. Details: `infra/railway/basemap-extract.md`.
+
+## Image bauen
+
+Das Image enthält Backend **und** gebautes Frontend; der Build-Kontext ist
+deshalb die Repo-Wurzel und nicht `backend/`:
+
+    docker build -f backend/Dockerfile -t tuber .

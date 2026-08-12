@@ -82,6 +82,36 @@ def test_security_header_auf_erfolgsantwort(anon_client):
     assert kopf["x-frame-options"] == "DENY"
 
 
+def test_csp_erlaubt_maplibres_worker(anon_client):
+    """Im Browser nachgeprüft (AP10b): MapLibre 6 laedt seinen Kachel-Worker
+    als eigene Datei von der eigenen Origin.
+
+    Mit `worker-src blob:` allein blockiert der Browser ihn — und zwar
+    lautlos, was die Karte weiss laesst, ohne dass im Netzwerk-Tab etwas
+    auffaellt. Genau dieser Fall ist hier festgehalten.
+    """
+    csp = anon_client.get("/api/health").headers["content-security-policy"]
+
+    assert "worker-src 'self' blob:" in csp
+    assert "child-src 'self' blob:" in csp
+
+
+def test_csp_oeffnet_keinen_fremden_host(anon_client):
+    """Schriften, Sprite und Kacheln liegen alle bei uns (ADR 0002).
+
+    Sobald hier ein fremder Host auftaucht, haengt die Karte wieder an einem
+    Dienst, den wir nicht kontrollieren — und im Wald ohne Netz fehlen die
+    Ortsnamen.
+    """
+    csp = anon_client.get("/api/health").headers["content-security-policy"]
+
+    assert "http://" not in csp
+    assert "https://" not in csp
+    assert "default-src 'none'" in csp
+    # eval() braucht nichts in diesem Frontend.
+    assert "unsafe-eval" not in csp
+
+
 def test_hsts_ohne_preload(anon_client):
     """preload ist praktisch nicht zurueckzuholen — bewusst nicht gesetzt."""
     assert "preload" not in anon_client.get("/api/health").headers["strict-transport-security"]

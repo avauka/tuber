@@ -1,13 +1,15 @@
 """Signal-Endpunkte (Spec §4). Idempotent über client_uuid (Invariante 3)."""
 
+from datetime import datetime
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Query, Response, status
 from sqlalchemy import Row, Select, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.common import lat_column, lon_column, point
+from app.api.common import bbox_filter, lat_column, lon_column, point
 from app.core.db import DbSession
 from app.models.core import Signal
 from app.schemas.signals import SignalCreate, SignalRead
@@ -74,3 +76,39 @@ def create_signal(payload: SignalCreate, response: Response, db: DbSession) -> S
             detail="Signal nach dem Commit nicht auffindbar.",
         )
     return _to_read(created)
+
+
+@router.get("", response_model=list[SignalRead])
+def list_signals(
+    db: DbSession,
+    bbox: Annotated[
+        str | None, Query(description="minLon,minLat,maxLon,maxLat (EPSG:4326)")
+    ] = None,
+    from_: Annotated[datetime | None, Query(alias="from")] = None,
+    to: Annotated[datetime | None, Query()] = None,
+) -> list[SignalRead]:
+    """Alle Signale, neueste zuerst. Aufbau wie GET /api/finds.
+
+    Ebenfalls ohne Pagination: dieselbe Begruendung wie bei den Funden —
+    Single-User, zweistellige Zahlen je Saison.
+
+    `observed_at` ist im Gegensatz zu `found_at` optional (Spec §4). Zeilen
+    ohne Zeitpunkt stehen deshalb am Ende und nicht, wie es PostgreSQL bei
+    DESC von sich aus tut, ganz oben.
+    """
+    stmt = _select_signals()
+    if bbox is not None:
+        try:
+            stmt = stmt.where(bbox_filter(Signal.geom, bbox))
+        except ValueError as exc:
+            # 4xx: die Queue soll das nicht wiederholen, der Aufruf ist falsch.
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+            ) from exc
+    if from_ is not None:
+        stmt = stmt.where(Signal.observed_at >= from_)
+    if to is not None:
+        stmt = stmt.where(Signal.observed_at <= to)
+
+    rows = db.execute(stmt.order_by(Signal.observed_at.desc().nullslast())).all()
+    return [_to_read(row) for row in rows]

@@ -1,4 +1,12 @@
 # TUBER API — Railway-Deploy (ADR 0001, Backlog AP9).
+#
+# ACHTUNG, Build-Kontext ist die REPO-WURZEL, nicht backend/ (seit AP10b):
+#
+#     docker build -f backend/Dockerfile -t tuber .
+#
+# Grund: Das Frontend wird hier mitgebaut und liegt ausserhalb von backend/.
+# Auf Railway heisst das: Root Directory des Service `tuber` leer lassen und
+# als Dockerfile-Pfad `backend/Dockerfile` eintragen.
 
 # ------------------------------------------------------------- go-pmtiles
 # Eigene Stage, weil curl und tar nur zum Beschaffen gebraucht werden und
@@ -30,6 +38,28 @@ RUN apt-get update \
     && tar -xzf /tmp/pmtiles.tar.gz -C /usr/local/bin pmtiles \
     && chmod +x /usr/local/bin/pmtiles \
     && rm /tmp/pmtiles.tar.gz
+
+# --------------------------------------------------------------- Frontend
+# Eigene Stage: Node und die halbe npm-Welt gehoeren nicht ins Laufzeitbild.
+# Herauskommt nur der Ordner dist/ (AP10b).
+#
+# Node festgenagelt, pnpm ueber corepack aus dem Feld "packageManager" in
+# frontend/package.json — damit bauen Entwicklerrechner und Image mit
+# derselben Version.
+FROM node:24.14.1-slim AS frontend
+
+WORKDIR /build
+RUN corepack enable
+
+# Erst das Manifest: Diese Schicht bleibt im Cache, solange sich die
+# Abhaengigkeiten nicht aendern.
+COPY frontend/package.json frontend/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+COPY frontend/ ./
+# `pnpm build` prueft mit tsc und baut dann — ein Typfehler soll das Image
+# scheitern lassen und nicht erst im Browser auffallen.
+RUN pnpm build
 
 # ------------------------------------------------------------ Laufzeitbild
 FROM python:3.12-slim
@@ -83,15 +113,19 @@ WORKDIR /app
 
 # Erst nur die Abhaengigkeiten aufloesen: Diese Schicht bleibt im Cache,
 # solange sich pyproject.toml und uv.lock nicht aendern.
-COPY pyproject.toml uv.lock ./
+COPY backend/pyproject.toml backend/uv.lock ./
 RUN uv sync --locked --no-dev --no-install-project
 
 # Dann der Code. --no-editable: das Paket wird echt installiert, nicht als
 # Verweis auf /app - der Container soll nicht davon abhaengen, dass das
 # Quellverzeichnis zur Laufzeit unveraendert daliegt.
-COPY . .
+COPY backend/ ./
 RUN uv sync --locked --no-dev --no-editable \
     && chmod +x entrypoint.sh
+
+# Das gebaute Frontend. FastAPI liefert es von derselben Origin aus (AP10b,
+# ADR 0005) — der Pfad steht in app/main.py als FRONTEND_DIST.
+COPY --from=frontend /build/dist /app/static
 
 # Non-root. /app und das venv gehoeren weiterhin root und bleiben damit fuer
 # den Dienst unveraenderlich.

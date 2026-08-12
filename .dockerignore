@@ -1,0 +1,34 @@
+# Build-Kontext ist seit AP10b die Repo-Wurzel (backend/Dockerfile baut das
+# Frontend mit). Was hier steht, wird gar nicht erst an den Daemon geschickt.
+
+# Umgebungen und Caches, die zur Architektur des Rechners gehoeren.
+backend/.venv/
+frontend/node_modules/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.ruff_cache/
+**/.mypy_cache/
+
+# Tests und Fixtures gehoeren nicht ins Laufzeitbild.
+backend/tests/
+
+# Lokale Daten: Media und die 208-MB-Basiskarte liegen auf einem Volume.
+backend/data/
+**/*.pmtiles
+
+# Ein lokal gebautes dist/ wuerde die Node-Stage im Image nur verwirren.
+frontend/dist/
+
+# Nicht im Image gebraucht.
+.git/
+.gitignore
+.gitattributes
+docs/
+geoprocessing/
+infra/
+docker-compose.yml
+README.md
+CLAUDE.md
+.env
+**/.env

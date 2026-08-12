@@ -30,17 +30,17 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+# Die Ablage (Verzeichnis, Dateinamen) gehoert dem Service-Modul: Der Job
+# schreibt dorthin, GET /api/basemap liest von dort (AP10b).
+from app.services.basemap import (
+    ARCHIVE_NAME,
+    META_NAME,
+    TMP_SUFFIX,
+    BasemapError,
+    basemap_dir,
+)
+
 BUILD_URL = "https://build.protomaps.com/{date}.pmtiles"
-
-ARCHIVE_NAME = "basemap.pmtiles"
-META_NAME = "basemap.meta.json"
-
-# Waehrend des Schreibens traegt die Datei diese Endung. Erst das Umhaengen
-# nach bestandener Pruefung macht sie zur aktiven Karte — ein Abbruch
-# hinterlaesst damit kein halbes Archiv, das echt aussieht.
-TMP_SUFFIX = ".tmp"
-
-DEFAULT_DIR = "/data"
 
 # Aachen/Eifel/Ardennen (ADR 0002). Maxzoom 14 reicht bis in die Waldwege:
 # Tracks tragen im Protomaps-Tileset min_zoom 13, und ueber z14 hinaus
@@ -74,10 +74,6 @@ EXPECTED_BYTES = 300_000_000
 MIN_FREE_BYTES = 1_000_000_000
 
 
-class BasemapError(RuntimeError):
-    """Fehler, der den Job abbrechen muss."""
-
-
 @dataclass(frozen=True)
 class BasemapResult:
     path: Path
@@ -86,10 +82,6 @@ class BasemapResult:
     seconds: float
     free_before: int
     free_after: int
-
-
-def basemap_dir() -> Path:
-    return Path(os.environ.get("BASEMAP_DIR", DEFAULT_DIR)).resolve()
 
 
 def _build_date() -> str:
