@@ -1,4 +1,37 @@
 # TUBER API — Railway-Deploy (ADR 0001, Backlog AP9).
+
+# ------------------------------------------------------------- go-pmtiles
+# Eigene Stage, weil curl und tar nur zum Beschaffen gebraucht werden und
+# nicht ins Laufzeit-Image gehoeren. Dasselbe Basis-Image wie unten, damit
+# kein zweiter Download entsteht.
+#
+# Warum ueberhaupt im Image und nicht als Einmal-Download: ADR 0003 laesst
+# die Area-Offline-Pakete zur Laufzeit per `pmtiles extract` entstehen. Das
+# Binary wird also ohnehin gebraucht — der Basiskarten-Job (AP10a) ist nur
+# der erste Nutzer.
+FROM python:3.12-slim AS pmtiles
+
+# Festgenagelt: Aufrufform und Ausgabeformat von `pmtiles show --metadata`
+# sind Vertrag fuer app/jobs/basemap_extract.py.
+ARG PMTILES_VERSION=1.31.2
+
+# sha256 des Assets go-pmtiles_1.31.2_Linux_x86_64.tar.gz, am 2026-08-12
+# selbst aus dem heruntergeladenen Release berechnet. Das Release bringt
+# keine checksums.txt mit (ueber die GitHub-Release-API geprueft), es gibt
+# also keine fremde Summe zum Uebernehmen. Beim Anheben der Version neu
+# bilden: sha256sum go-pmtiles_<VERSION>_Linux_x86_64.tar.gz
+ARG PMTILES_SHA256=3ed7dbf4ec2e6dfe5e25b6f70d1ffc932729f93c86db353bf514dd71010a312f
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
+    && curl -fsSL -o /tmp/pmtiles.tar.gz \
+        "https://github.com/protomaps/go-pmtiles/releases/download/v${PMTILES_VERSION}/go-pmtiles_${PMTILES_VERSION}_Linux_x86_64.tar.gz" \
+    && echo "${PMTILES_SHA256}  /tmp/pmtiles.tar.gz" | sha256sum -c - \
+    && tar -xzf /tmp/pmtiles.tar.gz -C /usr/local/bin pmtiles \
+    && chmod +x /usr/local/bin/pmtiles \
+    && rm /tmp/pmtiles.tar.gz
+
+# ------------------------------------------------------------ Laufzeitbild
 FROM python:3.12-slim
 
 # uv aus dem offiziellen Image; kein pip-Bootstrap, keine Netzwerkinstallation
@@ -32,6 +65,9 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends postgresql-client-16 \
     && apt-get purge -y --auto-remove curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Nur das Binary, nicht die Werkzeuge, mit denen es geholt wurde.
+COPY --from=pmtiles /usr/local/bin/pmtiles /usr/local/bin/pmtiles
 
 # pg_dump aus dem versionierten Paket liegt nicht im PATH.
 ENV PATH="/usr/lib/postgresql/16/bin:$PATH"

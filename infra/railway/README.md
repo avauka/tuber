@@ -25,6 +25,17 @@ einzige Sicherung. Er ist umgesetzt; einzurichten bleibt der
 `backup-cron`-Service samt Volume — und der **regelmässige Download**, ohne
 den der Dump Railway nie verlässt.
 
+### Basiskarte
+
+Der Extract der Basiskarte (ADR 0002, AP10a) läuft **manuell und ohne
+Zeitplan** im Container des Service `tuber` — dort hängt das Volume. Ein Lauf
+legt `/data/basemap.pmtiles` und `/data/basemap.meta.json` ab; ausgeliefert
+wird noch nichts (das ist AP10b). Auslösung, Variablen und Aktualisierung:
+[`basemap-extract.md`](basemap-extract.md).
+
+Das Image bringt dafür `go-pmtiles` mit (eigene Build-Stage im
+`backend/Dockerfile`), das ADR 0003 später auch zur Laufzeit braucht.
+
 ### Schema-Oberfläche
 
 Standardmässig sind `/docs`, `/redoc` und `/openapi.json` abgeschaltet. Für
@@ -78,6 +89,10 @@ Kommt vom Template. Railway stellt `DATABASE_URL` als Referenz bereit.
 | `BACKUP_PASSPHRASE` | symmetrische GPG-Passphrase für den Dump | ab AP15 |
 | `BACKUP_TRIGGER_TOKEN` | Bearer-Token, mit dem der Cron auslöst | ab AP15 |
 
+Die Variablen des Basiskarten-Laufs (`BASEMAP_BUILD_DATE` und Co.) stehen
+bewusst **nicht** in dieser Tabelle: Sie gehören zum einzelnen manuellen Lauf,
+nicht dauerhaft an den Service — siehe [`basemap-extract.md`](basemap-extract.md).
+
 Fehlen `SESSION_SECRET` oder `AUTH_PASSWORD_HASH`, antwortet der Login mit
 `500` statt jemanden durchzulassen — eine Fehlkonfiguration soll laut
 scheitern.
@@ -130,7 +145,9 @@ dieselbe Funktion holt. Es ist also nichts von Hand umzuschreiben.
 ## Volumes und Backup
 
 - Volume am `db`-Service für die Datenbank
-- Volume am `api`-Service für Media (ab AP13) und die Basiskarte (ab AP10)
+- Volume am `api`-Service für Media (ab AP13), die Backups (ab AP15) und die
+  Basiskarte (ab AP10a, ~208 MB von 5 GB). `GET /api/backups` meldet die
+  Auslastung mit — ein volles Volume bräche sonst still die Backup-Rotation.
 - **Volume-Backups ab Tag 1 aktivieren** (ADR 0004). Sie schützen nicht gegen
   Projekt- oder Accountverlust — der wöchentliche `pg_dump` off-platform aus
   AP15 bleibt trotzdem nötig.

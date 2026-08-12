@@ -26,6 +26,7 @@ from app.services.backups import (
     is_stale,
     list_backups,
     resolve,
+    volume_usage,
 )
 
 router = APIRouter(prefix="/api/backups", tags=["backups"])
@@ -58,10 +59,14 @@ def list_backup_files(db: DbSession) -> BackupList:
         )
         for pfad in pfade
     ]
+    total, used, free = volume_usage()
     return BackupList(
         entries=eintraege,
         stale_count=sum(1 for e in eintraege if e.stale),
         keep=KEEP_BACKUPS,
+        disk_total_bytes=total,
+        disk_used_bytes=used,
+        disk_free_bytes=free,
     )
 
 

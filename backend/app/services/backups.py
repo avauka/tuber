@@ -7,6 +7,7 @@ entschlüsselt nichts.
 
 import os
 import re
+import shutil
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -83,6 +84,24 @@ def rotate(keep: int = KEEP_BACKUPS) -> list[str]:
         pfad.unlink(missing_ok=True)
         entfernt.append(pfad.name)
     return entfernt
+
+
+def volume_usage() -> tuple[int, int, int]:
+    """Gesamt, belegt und frei auf dem Dateisystem der Ablage — in Bytes.
+
+    Auf demselben Volume liegt seit AP10a auch die Basiskarte. Ohne diese
+    Zahlen scheitert die Rotation an einer vollen Platte, ohne dass es jemand
+    sieht: Der Dump bricht ab, und auffallen wuerde es erst beim Restore.
+
+    Gemessen wird am naechsten vorhandenen Verzeichnis oberhalb der Ablage —
+    vor dem ersten Dump gibt es sie noch nicht, das Dateisystem ist aber
+    dasselbe.
+    """
+    verzeichnis = backup_dir()
+    while not verzeichnis.exists() and verzeichnis != verzeichnis.parent:
+        verzeichnis = verzeichnis.parent
+    total, used, free = shutil.disk_usage(verzeichnis)
+    return total, used, free
 
 
 def is_stale(name: str, downloaded_at: datetime | None, now: datetime | None = None) -> bool:

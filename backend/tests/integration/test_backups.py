@@ -261,6 +261,29 @@ def test_liste_zeigt_groesse_und_stale(client, backup_verzeichnis):
     assert body["stale_count"] == 1
 
 
+def test_liste_meldet_die_auslastung_des_volumes(client, backup_verzeichnis):
+    """Seit AP10a teilt sich die Basiskarte das Volume mit den Dumps.
+
+    Ohne diese Zahlen scheitert die Rotation an einer vollen Platte, ohne
+    dass es jemand sieht — auffallen wuerde es erst beim Restore.
+    """
+    body = client.get("/api/backups").json()
+
+    assert body["disk_total_bytes"] > 0
+    assert 0 < body["disk_free_bytes"] <= body["disk_total_bytes"]
+    assert 0 <= body["disk_used_bytes"] <= body["disk_total_bytes"]
+
+
+def test_auslastung_auch_ohne_angelegtes_verzeichnis(tmp_path, monkeypatch, client):
+    """Vor dem ersten Dump gibt es die Ablage noch nicht — das Volume schon."""
+    monkeypatch.setenv("BACKUP_DIR", str(tmp_path / "gibt-es-noch-nicht"))
+
+    body = client.get("/api/backups").json()
+
+    assert body["entries"] == []
+    assert body["disk_total_bytes"] > 0
+
+
 def test_download_liefert_die_datei_und_wird_festgehalten(client, backup_verzeichnis):
     inhalt = b"\x85\x02\x0c\x03verschluesselter-inhalt"
     name = _dump_anlegen(backup_verzeichnis, datetime.now(UTC) - timedelta(days=9), inhalt)
