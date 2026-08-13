@@ -19,6 +19,11 @@ from typing import BinaryIO
 TILES_NAME = "suitability.pmtiles"
 META_NAME = "suitability.meta.json"
 
+# Der Pfad der Auslieferung ist bewusst nicht der Dateiname: Spec §12 nennt
+# `tiles.pmtiles`, auf dem Volume heisst die Datei nach ihrem Inhalt. Wer
+# den Dateinamen ändert, ändert damit nicht die öffentliche Schnittstelle.
+TILES_ROUTE = "tiles.pmtiles"
+
 TMP_SUFFIX = ".tmp"
 
 DEFAULT_DIR = "/data"

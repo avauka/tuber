@@ -242,3 +242,30 @@ Beschaffung in AP17.
 - ISRIC SoilGrids · CC-BY
 - Service public de Wallonie (CNSW) — **nur client-seitig**, nicht
   redistribuierbar
+
+## 12. Nachtrag 2026-08-13 (AP17a): Upload-Endpunkt
+
+Die fertigen Eignungskacheln kommen über einen auth-geschützten Upload-Endpunkt
+`POST /api/suitability/upload` auf das Volume. Das weicht von der Begründung in
+AP10a ab, wo ein Upload-Endpunkt für die Basiskarte ausdrücklich verworfen wurde.
+
+Beide Hälften jener Begründung tragen hier nicht mehr:
+- **"Der Container kann die Datei selbst holen."** Bei der Basiskarte lag die
+  Quelle als öffentlicher Dienst unter stabiler URL. Die Eignungskacheln
+  entstehen auf dem Rechner des Nutzers; es gibt keine Quelle, die der Container
+  abrufen könnte, ohne dass wir künstlich eine schaffen.
+- **"Ein Vorgang alle paar Monate."** Jede Neugewichtung erzeugt neue Kacheln,
+  und Kalibrierung ist ausdrücklich vorgesehen (§7, Spec §11).
+
+Verworfene Alternativen: Kacheln ins Image backen (jede Neugewichtung erzwingt
+einen Image-Build und hebt den Zweck der zweistufigen Pipeline auf) und
+Durchpipen über `railway ssh` (funktioniert, ist aber eine mehrgliedrige
+manuelle Kette — als wiederkehrender Vorgang zu brüchig).
+
+Auflagen: Größenlimit stückweise geprüft, Freiplatz vor dem Schreiben, Schreiben
+nach `.tmp` mit Signaturprüfung und anschließendem `os.replace`, Metadatei
+zusammen mit den Kacheln, bei jedem Fehler bleibt die bestehende Karte
+unberührt.
+
+Die Ablehnung aus AP10a bleibt für die Basiskarte gültig. Sie überträgt sich
+nicht.

@@ -336,78 +336,170 @@ Der Bedingungsscore wird bei jeder Session automatisch mitgespeichert (`session.
 ## 6. Eignungskarte (Phase 2)
 
 ### Prinzip
-Offline vorberechnetes Raster, ausgeliefert als Tiles. **Keine Live-Berechnung.** Zielauflösung 10 m (limitiert durch die Baumartendaten), Klimafaktoren werden vom 1-km-Raster hochskaliert.
+Offline vorberechnetes Raster, ausgeliefert als Vektorkacheln.
+**Keine Live-Berechnung.** Zielauflösung **20 m**, EPSG:25832.
+Verbindliche Detailentscheidungen: ADR 0008.
+
+Die 20 m sind eine bewusste Vergröberung gegenüber der früheren Zielgröße von
+10 m. Die schwächsten Faktoren liegen bei ~50 m (Boden) und 1 km (Klima); ein
+10-m-Ergebnisraster würde eine Trennschärfe suggerieren, die drei von sechs
+Faktoren nicht liefern. Die Karte beantwortet "wohin fahre ich", nicht "wo
+genau im Bestand".
 
 ### Bewusste Entscheidung: eine artunabhängige Karte
 
-Trotz der Artendifferenzierung in 4a wird **nur ein** Eignungsraster berechnet, kein Layer je Art.
+Trotz der Artendifferenzierung in 4a wird **nur ein** Eignungsraster berechnet,
+kein Layer je Art.
 
-Begründung: *T. aestivum*, *macrosporum*, *mesentericum* und *brumale* teilen Kalkbindung, Wirtsbaumspektrum und Drainageansprüche. Die Unterschiede liegen in Feinheiten, die BK 50 bei ~50 m und der Baumarten-Layer bei Kronendominanz nicht auflösen. Vier Karten wären zu über 90 % identisch und würden eine Trennschärfe suggerieren, die die Datengrundlage nicht hergibt.
+Begründung: *T. aestivum*, *macrosporum*, *mesentericum* und *brumale* teilen
+Kalkbindung, Wirtsbaumspektrum und Drainageansprüche. Die Unterschiede liegen in
+Feinheiten, die die Bodenkarten und der Baumarten-Layer nicht auflösen. Vier
+Karten wären zu über 90 % identisch und würden eine Trennschärfe suggerieren,
+die die Datengrundlage nicht hergibt.
 
-**Wo die Arten sich real unterscheiden, ist die Zeit** — und das kostet nur eine Saisonkurve pro Zielfenster statt eines eigenen Rasters.
+**Wo die Arten sich real unterscheiden, ist die Zeit** — und das kostet nur eine
+Saisonkurve pro Zielfenster statt eines eigenen Rasters.
 
-Artspezifische Raster werden erst erwogen, wenn Phase 3 aus eigenen Funddaten belastbare Unterschiede in den Faktorprofilen zeigt.
+Artspezifische Raster werden erst erwogen, wenn Phase 3 aus eigenen Funddaten
+belastbare Unterschiede in den Faktorprofilen zeigt.
 
 ### Faktoren und Gewichte (Startwerte, kalibrierbar)
 
-| Faktor | Gewicht | Quelle | Auflösung |
+| Faktor | Gewicht | Quelle (beste Stufe) | Auflösung |
 |---|---|---|---|
-| Kalk/pH (abgeleitet) | 30 % | IS GK 100 Lithologie + IS BK 50 Bodentyp | ~50 m |
-| Wirtsbaum | 25 % | Thünen Dominant Tree Species | 10 m |
-| Drainage/Textur | 20 % | IS BK 50 (Staunässe, Durchwurzelbarkeit) | ~50 m |
-| Exposition/Einstrahlung | 15 % | DGM1 abgeleitet | 1–10 m |
+| Kalk/pH (abgeleitet) | 30 % | IS GK 100 Lithologie + IS FSK 5 | ~10–50 m |
+| Drainage/Wasserhaushalt | 20 % | IS FSK 5 (Gesamtwasserhaushalt) | ~10 m |
+| Exposition/Einstrahlung | 15 % | DGM, auf 20 m aggregiert | 20 m |
+| Wirtsbaum | 15 % | Thünen Dominant Tree Species, maskiert mit der Kalamitätskarte NRW | 10 m |
+| Bestandsstruktur | 10 % | nDOM50 (Geobasis NRW) | 0,5 m |
 | Klima | 10 % | DWD 1-km-Raster | 1 km |
+
+Der Wirtsbaum wiegt bewusst weniger als in früheren Fassungen (25 %): Der Layer
+kennt nur die dominante Kronenbaumart, sieht die Hasel im Unterwuchs nicht und
+sein Aufnahmestand liegt vor dem Fichtensterben ab 2018. Die abgegebenen 10 %
+gehen an die Bestandsstruktur, die unabhängig gemessen und aktueller ist.
+
+Die Gewichte sind zur Laufzeit änderbar und liegen versioniert in der Datenbank,
+nicht im Code (ADR 0008 §7).
+
+### Kein Ausschlusskriterium innerhalb des Scores
+
+Weder Kalk noch Baumart wirken als K.o. Der Kalkfaktor bekommt eine steile,
+nicht-lineare Kennlinie: unterhalb der Schwelle fällt der Gesamtscore in die
+unterste Klasse, die Fläche bleibt aber sichtbar und der Grund aufschlüsselbar.
+
+Begründung: Der pH-Wert ist abgeleitet, nicht gemessen (§13). Ein hartes K.o. auf
+einem abgeleiteten Wert löscht Mergellinsen, Kolluvium und kleinräumige Wechsel
+unwiderruflich aus der Karte — der Nutzer sähe sie nie und erführe nie, dass er
+sie nicht sieht. Ein Nadelwald-Ausschluss wäre zusätzlich sachlich falsch, weil
+*T. borchii* kiefernaffin ist und die Karte für die Gattung gilt.
+
+Ein echtes K.o. gibt es nur außerhalb des Scores: Sperrflächen im
+Zugänglichkeits-Layer.
+
+### Fallback-Kaskade und Datenqualität
+
+Je Faktor existiert eine Kaskade von der besten zur gröbsten Quelle; jede Zelle
+protokolliert die verwendete Stufe. Fehlt ein Faktor vollständig, wird sein
+Gewicht proportional auf die vorhandenen umgelegt und die Zelle in der Ampel
+abgestuft — kein Ersatzwert, kein Auffüllen mit Mittelwerten.
+
+Zwischen Kartenwerken wird **nicht** übersetzt: Jede Quelle bekommt eigene Regeln
+auf dieselbe 0–100-Skala. Eine sichtbare Kante an der Landesgrenze ist ehrlicher
+als eine geglättete Naht. Vollständige Kaskade: ADR 0008 §5.
+
+### Räumlicher Geltungsbereich
+
+Das Eignungsraster deckt **NRW und Rheinland-Pfalz** ab.
+
+Für den wallonischen Teil des Kartenausschnitts gibt es **keine Eignungskarte**.
+Die CNSW-Lizenz verbietet Weiterverbreitung; ein vorberechnetes Raster aus diesen
+Daten wäre ein abgeleitetes Produkt und fiele unter dieselbe Beschränkung
+(Invariante 12). Stattdessen wird CNSW als client-seitiges WMS-Overlay im Planer
+angeboten — Textur, Drainage, Steingehalt, direkt vom wallonischen Dienst
+geladen, nie über den eigenen Server.
 
 ### Datenquellen mit Endpoints
 
 **Geologie NRW (IS GK 100)**
+- Download: OpenGeodata.NRW, Shape/GeoPackage, EPSG:25832
 - WMS: `https://www.wms.nrw.de/gd/wms_nw_inspire-gk100`
-- WFS: `https://www.wfs.nrw.de/gd/wfs_nw_inspire-gk100`
-- Download: OpenGeodata.NRW, GeoPackage/Shape, EPSG:25832
 - Lizenz: dl-de/by-2-0, Zitierpflicht mit Abrufdatum
-- Nutzung: Layer "Lithologische Zusammensetzung", filtern auf Kalk/Dolomit
+- Nutzung: Feld `LITHOLOG_1` der Hauptschichten (Oberflächengeologie)
+
+**Forstliche Standortkarte NRW (IS FSK 5 / FSK 50)**
+- Auswertung der BK 5 F mit Klimaatlas NRW und Reliefdaten
+- Enthält Gesamtwasserhaushalt und natürliche Nährstoffversorgung direkt
+- FSK 5 nur, wo eine forstliche Bodenkartierung vorliegt; FSK 50 landesweit
+- Lizenz: dl-de/by-2-0
 
 **Bodenkarte NRW (IS BK 50)**
-- WMS: `https://www.wms.nrw.de/gd/bk050`
 - Download: `https://www.opengeodata.nrw.de/produkte/geologie/boden/BK/ISBK50/`
-- Attribute: Bodentyp, Bodenartengruppe, Staunässe, Durchwurzelbarkeit, KAK, Versickerungseignung, Grabbarkeit
+- Nutzung: Bodentyp (`TYP_TEXT`) als bestätigender/überschreibender Zeiger
+- Achtung: Die Felder `ZPH_A`/`ZPH_G` sehen wie ein pH aus, sind bei 7,0 gekappt
+  und trennen Rendzina kaum von Braunerde. Als Kalkzeiger unbrauchbar.
 - Lizenz: dl-de/by-2-0
+
+**Boden Rheinland-Pfalz (BFD50)**
+- LGB Rheinland-Pfalz, landesweit, oberflächennaher Untergrund bis 2 m
+- WMS: `mapserver.lgb-rlp.de`, INSPIRE-GML-Download
+- Lizenz: dl-de/by-2-0, "©LGB-RLP (Jahr des Datenbezugs)"
 
 **Baumarten (Thünen)**
 - Layer `geonode:Dominant_Species_Class` auf atlas.thuenen.de
 - 10 m, Sentinel-1/2 + Bundeswaldinventur
 - Genauigkeit: 87 % bei Reinbeständen, 75,5 % gesamt
-- **Bekannte Blindstelle:** kartiert nur die dominante Kronenbaumart. Hasel als Unterwuchs — oft der beste Wirt in kühlem Klima — ist unsichtbar. Muss im UI explizit als Limitation stehen.
-- Alternative: DLR EOC Tree Species Germany 2022 (geoservice.dlr.de)
+- **Zwei bekannte Blindstellen:** kartiert nur die dominante Kronenbaumart
+  (Hasel im Unterwuchs unsichtbar) und ist zeitlich veraltet (§13).
+
+**Kalamitätskarte NRW (Waldinfo.NRW / LANUV)**
+- Nadelholzflächen mit starkem Vitalitätsverlust seit 2018, Flächen ab 0,1 ha
+- Nutzung: Korrekturmaske über den Thünen-Layer, kein eigener Faktor
+- Endet an der Landesgrenze; außerhalb NRW bleibt der Thünen-Layer unkorrigiert
+
+**Bestandsstruktur (nDOM50, Geobasis NRW)**
+- Differenz aus DGM und belaubtem bildbasiertem DOM, 50 cm Bodenauflösung
+- Zwei Erfassungszyklen (DGM 5 Jahre, bDOM 4 Jahre) — Aktualität braucht immer
+  zwei Zeitangaben
+
+**Relief (DGM, Geobasis NRW)**
+- DGM1 als GeoTIFF-Kacheln, offen. Die Pipeline aggregiert kachelweise auf 20 m
+  und verwirft das Original sofort.
 
 **Klima (DWD CDC)**
 - Download: `https://opendata.dwd.de/climate_environment/`
-- WMS: `https://cdc.dwd.de/geoserver/ows`
-- 1 km, vieljährige Mittel für Temperatur, Niederschlag, Globalstrahlung
+- 1 km, vieljährige Mittel
 
-**Relief (DGM1 NRW)**
-- OpenGeodata.NRW, 1 m LIDAR
-- Ableitungen: Hangneigung, Exposition, Einstrahlung (GRASS `r.sun` oder SAGA)
+**Biotop- und Schutzgebietsdaten (LANUV LINFOS)**
+- Biotopkataster, FFH-Lebensraumtypen, gesetzlich geschützte Biotope
+- Lizenz: dl-de/by-2-0
+- **Als Overlay, nicht im Score.** Wo Kalk-Trockenrasen kartiert sind, hat
+  jemand vor Ort nachgesehen — das schlägt jede Ableitung. Aber die Kartierung
+  ist lückenhaft: Als Faktor im Score würde eine Erhebungslücke zum
+  Standortnachteil.
 
-**Wallonien (Ardennen/Ostbelgien)**
-- CNSW WMS: `https://geoservices.wallonie.be/arcgis/services/SOL_SOUS_SOL/CNSW/MapServer/WMSServer`
-- Attribute: Textur, Drainage, Steingehalt
-- **Lizenzfalle:** Daten dürfen nicht weiterverteilt oder über einen eigenen Webdienst publiziert werden. Für private Nutzung in Ordnung — der Layer muss client-seitig direkt vom wallonischen Dienst geladen werden, nicht über den eigenen Server proxied oder gecacht.
+**Wallonien (CNSW)**
+- WMS: `https://geoservices.wallonie.be/arcgis/services/SOL_SOUS_SOL/CNSW/MapServer/WMSServer`
+- **Nur client-seitig laden, nie proxyen, nie cachen** (Invariante 12)
 
-**Fallback außerhalb Kernregion**
-- SoilGrids (ISRIC), 250 m, CC-BY — inklusive pH. Gröber, aber EU-weit.
+**Fallback außerhalb der Kernregion**
+- SoilGrids (ISRIC), 250 m, CC-BY
 
 ### Zugänglichkeits-Layer (nicht optional)
 Ohne diesen Layer plant man Fahrten zu unerreichbaren Flächen.
-- Schutzgebiete: BfN-Schutzgebietsdaten (NSG, FFH, Nationalpark Eifel)
+- Schutzgebiete: BfN-Schutzgebietsdaten, LANUV LINFOS (NSG, FFH, Nationalpark Eifel)
 - Wege und Parkmöglichkeiten: OpenStreetMap
 - Truppenübungsplätze und Sperrgebiete
-- Darstellung: Sperrflächen deutlich abgesetzt (Schraffur), sie überschreiben den Eignungs-Score visuell
+- Darstellung: Sperrflächen deutlich abgesetzt (Schraffur), sie überschreiben den
+  Eignungs-Score visuell
 
 ### Darstellung
-- **Diskrete Klassen, kein Farbverlauf.** Vier Stufen. Ein glatter Verlauf suggeriert eine Präzision, die die Daten nicht hergeben.
-- **Datenqualitäts-Ampel** als eigener Layer: wo liegen gute Daten (NRW mit BK 50), wo nur Fallback (SoilGrids)?
-- **Faktoraufschlüsselung bei Antippen:** Balkenanzeige der fünf Teilscores plus Klartext ("Hoher Score getrieben von Kalkboden und Eichenbestand; Klimafaktor nur grob 1-km-Auflösung").
+- **Diskrete Klassen, kein Farbverlauf.** Vier Stufen.
+- **Datenqualitäts-Ampel** als eigener Layer, gespeist aus den je Zelle
+  protokollierten Kaskadenstufen — keine Schätzung.
+- **Faktoraufschlüsselung bei Antippen:** Teilscores plus Klartext. Solange nicht
+  alle sechs Faktoren vorliegen, nennt der Layer sichtbar, welche enthalten sind
+  und dass die Gewichte umgelegt wurden.
 
 ---
 
@@ -513,7 +605,10 @@ GET    /api/conditions/{area_id}      7-Tage-Ausblick + Score-Aufschlüsselung
 GET    /api/areas
 POST   /api/areas
 GET    /api/revisits/due
-GET    /api/tiles/suitability/{z}/{x}/{y}.png
+GET    /api/suitability/tiles.pmtiles   Eignungs-Vektorkacheln (Range-Requests)
+GET    /api/suitability/meta            Gewichtssatz, Faktoren, Quellen, Stand
+GET    /api/suitability/weights         aktiver Gewichtssatz
+POST   /api/suitability/upload          Kacheln + Metadatei (lokal erzeugt)
 GET    /api/offline/package/{area_id} Offline-Bundle (Tiles + Metadaten)
 ```
 
@@ -525,14 +620,31 @@ Sync-Endpunkt akzeptiert Batch-Uploads aus der Offline-Queue mit client-seitig g
 
 Diese Punkte sind keine Bugs, sondern Eigenschaften. Sie müssen dem Nutzer einmal klar gesagt werden:
 
-1. Die Karte zeigt **Habitat-Eignung**, keine Fundwahrscheinlichkeit. Trüffelvorkommen sind auch im perfekten Habitat extrem fleckig.
-2. Der pH-Wert ist aus Geologie und Bodentyp **abgeleitet**, nicht gemessen. Ein Feld-pH-Meter und ein HCl-Tropfen schlagen jedes Kartenpixel — deshalb gehören beide Messwerte ins Fundformular.
+1. Die Karte zeigt **Habitat-Eignung**, keine Fundwahrscheinlichkeit.
+   Trüffelvorkommen sind auch im perfekten Habitat extrem fleckig.
+2. Der pH-Wert ist aus Geologie und Bodentyp **abgeleitet**, nicht gemessen. Ein
+   Feld-pH-Meter und ein HCl-Tropfen schlagen jedes Kartenpixel — deshalb gehören
+   beide Messwerte ins Fundformular.
 3. Der Baumarten-Layer sieht **keine Hasel im Unterwuchs**.
-4. Der Klimafaktor hat nur 1 km Auflösung.
-5. Die Coverage zeigt ungefähre, nicht systematische Abdeckung.
-6. Außerhalb NRW und Wallonien ist die Datengrundlage deutlich gröber.
-7. Die **Artbestimmung im Feld ist unsicher**. "Unbestimmt" ist die richtige Antwort, bis Geruch, Anschnitt und ggf. Mikroskopie vorliegen. Die App erzwingt bewusst keine Artangabe.
-8. Die Eignungskarte gilt **für die Gattung**, nicht für einzelne Arten. Artspezifisch ist nur das Zeitfenster.
+4. Der Baumarten-Layer ist **zeitlich veraltet**. Seit dem Dürresommer 2018 ist in
+   der Eifel großflächig Fichte abgestorben und geräumt worden; wo die Karte Wald
+   zeigt, steht real oft Kahlfläche. Innerhalb NRW wird das mit der
+   Kalamitätskarte korrigiert, außerhalb NRW nicht.
+5. Der Klimafaktor hat nur 1 km Auflösung.
+6. Die Coverage zeigt ungefähre, nicht systematische Abdeckung.
+7. Die **Artbestimmung im Feld ist unsicher**. "Unbestimmt" ist die richtige
+   Antwort, bis Geruch, Anschnitt und ggf. Mikroskopie vorliegen.
+8. Die Eignungskarte gilt **für die Gattung**, nicht für einzelne Arten.
+   Artspezifisch ist nur das Zeitfenster.
+9. **Für Wallonien gibt es keine Eignungskarte.** Die CNSW-Lizenz erlaubt keine
+   Weiterverbreitung abgeleiteter Produkte. Dort steht nur die Basiskarte plus
+   das client-seitige CNSW-Overlay zur eigenen Beurteilung.
+10. Die Datengrundlage ist **nicht überall gleich gut**. Innerhalb NRW schwankt
+    sie je nachdem, ob eine forstliche Bodenkartierung vorliegt; in
+    Rheinland-Pfalz stammt sie aus einem anderen Kartenwerk. Die
+    Datenqualitäts-Ampel zeigt das flächengenau.
+11. Geologie und Bodentyp sind über Jahrzehnte stabil, der Bestandszustand nicht.
+    Die Karte altert an verschiedenen Stellen verschieden schnell.
 
 ---
 

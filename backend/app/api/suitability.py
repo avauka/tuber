@@ -29,7 +29,7 @@ from app.core.db import DbSession
 from app.models.core import SuitabilityWeightSet
 from app.schemas.suitability import SuitabilityMeta, UploadErgebnis, WeightSet
 from app.services.suitability import (
-    TILES_NAME,
+    TILES_ROUTE,
     SuitabilityError,
     read_meta,
     speichere_upload,
@@ -67,7 +67,7 @@ def aktiver_gewichtssatz(db: DbSession) -> WeightSet:
     )
 
 
-@router.get(f"/{TILES_NAME}")
+@router.get(f"/{TILES_ROUTE}")
 def eignungs_kacheln() -> FileResponse:
     pfad = tiles_path()
     if not pfad.is_file():

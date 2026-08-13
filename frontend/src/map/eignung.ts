@@ -14,7 +14,7 @@ export const EIGNUNG_QUELLE = "tuber-eignung";
 export const EIGNUNG_EBENE = "eignung-flaeche";
 
 /** Gleiche Origin, damit das Sitzungs-Cookie mitgeht (ADR 0005). */
-export const EIGNUNG_PFAD = "/api/suitability/suitability.pmtiles";
+export const EIGNUNG_PFAD = "/api/suitability/tiles.pmtiles";
 export const EIGNUNG_URL = `pmtiles://${EIGNUNG_PFAD}`;
 
 // Der Layername in den Vektorkacheln, vergeben von stufe2_tiles.py.

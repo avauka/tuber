@@ -10,11 +10,13 @@ import json
 
 import pytest
 
-from app.services.suitability import META_NAME, PMTILES_MAGIC, TILES_NAME
+from app.services.suitability import META_NAME, PMTILES_MAGIC, TILES_NAME, TILES_ROUTE
 
 pytestmark = pytest.mark.db
 
-KACHEL_PFAD = f"/api/suitability/{TILES_NAME}"
+# Spec §12: Der Auslieferungspfad heisst tiles.pmtiles, die Datei auf dem
+# Volume suitability.pmtiles. Beides absichtlich getrennt.
+KACHEL_PFAD = f"/api/suitability/{TILES_ROUTE}"
 
 # Kein echtes PMTiles-Archiv, aber mit gültiger Signatur — mehr prüft der
 # Dienst nicht, und mehr soll er auch nicht prüfen.
