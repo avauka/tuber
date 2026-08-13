@@ -10,7 +10,14 @@
  * Das Cookie haelt 90 Tage, aber irgendwann laeuft es ab, und dann darf
  * nicht die halbe Oberflaeche stehenbleiben.
  */
-import type { BasiskartenMeta, Fund, Gebiet, GebietEntwurf, Signal } from "./typen";
+import type {
+  BasiskartenMeta,
+  EignungsMeta,
+  Fund,
+  Gebiet,
+  GebietEntwurf,
+  Signal,
+} from "./typen";
 
 export class NichtAngemeldet extends Error {
   constructor() {
@@ -102,4 +109,8 @@ export function legeGebietAn(entwurf: GebietEntwurf): Promise<Gebiet> {
 
 export function ladeBasiskartenMeta(): Promise<BasiskartenMeta> {
   return anfrage<BasiskartenMeta>("/api/basemap/meta");
+}
+
+export function ladeEignungsMeta(): Promise<EignungsMeta> {
+  return anfrage<EignungsMeta>("/api/suitability/meta");
 }

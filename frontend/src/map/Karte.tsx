@@ -17,9 +17,23 @@ import {
 // eigenen Importe buendeln und gibt uns die URL dazu.
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { FetchSource, PMTiles, Protocol } from "pmtiles";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import type { BasiskartenMeta, Fund, Gebiet, Polygon, Signal } from "../shared/typen";
+import type {
+  BasiskartenMeta,
+  EignungsTreffer,
+  Fund,
+  Gebiet,
+  Polygon,
+  Signal,
+} from "../shared/typen";
+import {
+  EIGNUNG_EBENE,
+  EIGNUNG_PFAD,
+  EIGNUNG_QUELLE,
+  EIGNUNG_URL,
+  eignungsEbene,
+} from "./eignung";
 import { istZuKlein, rechteckPolygon } from "./rechteck";
 import { ARCHIV_PFAD, basisStil } from "./stil";
 
@@ -34,6 +48,11 @@ type Props = {
   /** Fertig gezogenes, noch nicht gespeichertes Rechteck. */
   entwurf: Polygon | null;
   onRechteck: (geometrie: Polygon) => void;
+  /** Eignungskarte eingeschaltet (ADR 0008). */
+  eignungAn: boolean;
+  /** Namen der beteiligten Faktoren, für die Aufschlüsselung beim Antippen. */
+  eignungsFaktoren: string[];
+  onEignungKlick: (treffer: EignungsTreffer | null) => void;
 };
 
 // Mitte der Bbox aus ADR 0002, bis die Metadaten der Karte da sind.
@@ -66,6 +85,9 @@ function richteMapLibreEin(): void {
   setWorkerUrl(workerUrl);
   const protokoll = new Protocol();
   protokoll.add(new PMTiles(new FetchSource(ARCHIV_PFAD, undefined, "same-origin")));
+  // Zweites Archiv, gleiche Behandlung: Auch die Eignungskacheln liegen
+  // hinter der Auth und werden mit Cookie geholt.
+  protokoll.add(new PMTiles(new FetchSource(EIGNUNG_PFAD, undefined, "same-origin")));
   addProtocol("pmtiles", protokoll.tile);
   eingerichtet = true;
 }
@@ -176,11 +198,25 @@ function umriss(geometrie: Polygon | null): FeatureCollection {
   };
 }
 
-export function Karte({ funde, signale, gebiete, meta, zeichenmodus, entwurf, onRechteck }: Props) {
+export function Karte({
+  funde,
+  signale,
+  gebiete,
+  meta,
+  zeichenmodus,
+  entwurf,
+  onRechteck,
+  eignungAn,
+  eignungsFaktoren,
+  onEignungKlick,
+}: Props) {
   const behaelter = useRef<HTMLDivElement | null>(null);
   const karte = useRef<MapLibreKarte | null>(null);
   const bereit = useRef(false);
   const eingepasst = useRef(false);
+  // Als State und nicht nur als Ref: Der Eignungs-Layer wird erst nach dem
+  // Laden angelegt, und der Effekt dafür muss dann noch einmal laufen.
+  const [geladen, setGeladen] = useState(false);
 
   useEffect(() => {
     const knoten = behaelter.current;
@@ -211,12 +247,14 @@ export function Karte({ funde, signale, gebiete, meta, zeichenmodus, entwurf, on
       setzeDaten(instanz, QUELLEN.funde, punkte(funde));
       setzeDaten(instanz, QUELLEN.signale, punkte(signale));
       setzeDaten(instanz, QUELLEN.gebiete, flaechen(gebiete));
+      setGeladen(true);
     });
 
     karte.current = instanz;
     return () => {
       bereit.current = false;
       eingepasst.current = false;
+      setGeladen(false);
       instanz.remove();
       karte.current = null;
     };
@@ -237,6 +275,60 @@ export function Karte({ funde, signale, gebiete, meta, zeichenmodus, entwurf, on
     if (karte.current && bereit.current)
       setzeDaten(karte.current, QUELLEN.gebiete, flaechen(gebiete));
   }, [gebiete]);
+
+  // Eignungskarte: eigene Quelle aus dem zweiten PMTiles-Archiv. Sie wird
+  // erst angelegt, wenn der Layer zum ersten Mal eingeschaltet wird —
+  // solange niemand ihn braucht, lädt auch nichts.
+  useEffect(() => {
+    const instanz = karte.current;
+    if (!instanz || !geladen) return;
+
+    if (!eignungAn) {
+      if (instanz.getLayer(EIGNUNG_EBENE)) {
+        instanz.setLayoutProperty(EIGNUNG_EBENE, "visibility", "none");
+      }
+      return;
+    }
+
+    if (!instanz.getSource(EIGNUNG_QUELLE)) {
+      instanz.addSource(EIGNUNG_QUELLE, { type: "vector", url: EIGNUNG_URL });
+    }
+    if (!instanz.getLayer(EIGNUNG_EBENE)) {
+      // Unter die eigenen Punkte, damit Funde und Signale sichtbar bleiben.
+      instanz.addLayer(eignungsEbene(), "signale-punkt");
+    }
+    instanz.setLayoutProperty(EIGNUNG_EBENE, "visibility", "visible");
+  }, [eignungAn, geladen]);
+
+  // Antippen schlüsselt den Score auf (Invariante 10).
+  useEffect(() => {
+    const instanz = karte.current;
+    if (!instanz || !geladen || !eignungAn) return;
+
+    const beimKlick = (ereignis: MapMouseEvent) => {
+      if (!instanz.getLayer(EIGNUNG_EBENE)) return;
+      const treffer = instanz.queryRenderedFeatures(ereignis.point, { layers: [EIGNUNG_EBENE] });
+      const erster = treffer[0];
+      if (!erster) {
+        onEignungKlick(null);
+        return;
+      }
+      const werte: Record<string, unknown> = erster.properties ?? {};
+      onEignungKlick({
+        score: Number(werte.score ?? 0),
+        klasse: Number(werte.klasse ?? 1),
+        stufe: Number(werte.stufe ?? 0),
+        teilscores: Object.fromEntries(
+          eignungsFaktoren.map((name) => [name, Number(werte[name] ?? 0)]),
+        ),
+      });
+    };
+
+    instanz.on("click", beimKlick);
+    return () => {
+      instanz.off("click", beimKlick);
+    };
+  }, [eignungAn, geladen, eignungsFaktoren, onEignungKlick]);
 
   // Das fertig gezogene Rechteck bleibt sichtbar, solange das Formular offen
   // ist — sonst füllt man Namen und Zufahrt für eine Fläche aus, die man

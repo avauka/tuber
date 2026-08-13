@@ -239,6 +239,38 @@ class ConditionsSnapshot(Base):
     raw: Mapped[dict | None] = mapped_column(JSONB)
 
 
+class SuitabilityWeightSet(Base):
+    """Gewichtssatz der Eignungskarte (ADR 0008 §3, §7).
+
+    Nicht im Spec — Spec §6 nennt die Gewichte als Startwerte, ADR 0008 §7
+    macht daraus eine Tabelle. Grund: Sie muessen zur Laufzeit aenderbar
+    sein (Spec §11 sieht eine Anpassung ab etwa 30 Funden vor), waehrend
+    `params.py` fuer strukturelle Konstanten gedacht ist, die ein Deploy
+    braucht.
+
+    Versioniert und mit Zeitstempel, weil `suitability.meta.json` festhaelt,
+    mit welcher Version die Kacheln entstanden sind. Ohne das laesst sich in
+    Phase 3 nicht rekonstruieren, welche Karte zu welchem Fund gehoerte —
+    derselbe Gedanke wie das Einfrieren von `session.conditions_score`.
+
+    Die Gewichte liegen als JSONB (Faktor -> Prozent) und nicht als Spalten:
+    Ein siebter Faktor waere sonst eine Migration.
+    """
+
+    __tablename__ = "suitability_weight_set"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    version: Mapped[int] = mapped_column(Integer, nullable=False, unique=True)
+    weights: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    note: Mapped[str | None] = mapped_column(Text)
+    # Hoechstens ein Satz ist aktiv; erzwungen ueber einen partiellen
+    # Unique-Index in der Migration, nicht nur ueber die Anwendung.
+    is_active: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )
+
+
 class BackupDownload(Base):
     """Nachweis, dass ein Dump das Volume verlassen hat (ADR 0004, AP15).
 

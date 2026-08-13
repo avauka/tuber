@@ -1,15 +1,25 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Karte } from "../map/Karte";
 import {
   abmelden,
   ladeBasiskartenMeta,
+  ladeEignungsMeta,
   ladeFunde,
   ladeGebiete,
   ladeSignale,
 } from "../shared/api";
-import type { BasiskartenMeta, Fund, Gebiet, Polygon, Signal } from "../shared/typen";
+import type {
+  BasiskartenMeta,
+  EignungsMeta,
+  EignungsTreffer,
+  Fund,
+  Gebiet,
+  Polygon,
+  Signal,
+} from "../shared/typen";
 import { Attribution } from "./Attribution";
+import { EignungsPanel } from "./EignungsPanel";
 import { FundListe } from "./FundListe";
 import { GebietsPanel } from "./GebietsPanel";
 import { SignalListe } from "./SignalListe";
@@ -18,7 +28,7 @@ type Props = {
   onAbgemeldet: () => void;
 };
 
-type Reiter = "funde" | "signale" | "gebiete";
+type Reiter = "funde" | "signale" | "gebiete" | "eignung";
 
 /**
  * Planer-Modus (Spec §7): grosse Karte, daneben Listen und die
@@ -33,6 +43,10 @@ export function PlanerShell({ onAbgemeldet }: Props) {
   const [reiter, setReiter] = useState<Reiter>("funde");
   const [zeichenmodus, setZeichenmodus] = useState(false);
   const [entwurf, setEntwurf] = useState<Polygon | null>(null);
+  const [eignungsMeta, setEignungsMeta] = useState<EignungsMeta | null>(null);
+  const [eignungsFehler, setEignungsFehler] = useState<string | null>(null);
+  const [eignungAn, setEignungAn] = useState(false);
+  const [treffer, setTreffer] = useState<EignungsTreffer | null>(null);
 
   useEffect(() => {
     // Jeder Aufruf für sich: Ein fehlender Datenstand darf nicht die
@@ -41,6 +55,15 @@ export function PlanerShell({ onAbgemeldet }: Props) {
     void ladeFunde().then(setFunde).catch(ignoriere);
     void ladeSignale().then(setSignale).catch(ignoriere);
     void ladeGebiete().then(setGebiete).catch(ignoriere);
+    void ladeEignungsMeta()
+      .then(setEignungsMeta)
+      .catch((problem: unknown) => {
+        // 503: Die Pipeline ist noch nicht gelaufen. Der Layer bleibt dann
+        // abgeschaltet — und sagt, warum.
+        setEignungsFehler(
+          problem instanceof Error ? problem.message : "Eignungskarte nicht verfügbar.",
+        );
+      });
     void ladeBasiskartenMeta()
       .then(setMeta)
       .catch((problem: unknown) => {
@@ -49,6 +72,16 @@ export function PlanerShell({ onAbgemeldet }: Props) {
         setKartenfehler(problem instanceof Error ? problem.message : "Basiskarte nicht verfügbar.");
       });
   }, []);
+
+  const eignungAngetippt = useCallback((neu: EignungsTreffer | null) => {
+    setTreffer(neu);
+    if (neu) setReiter("eignung");
+  }, []);
+
+  const eignungsFaktoren = useMemo(
+    () => (eignungsMeta ? Object.keys(eignungsMeta.faktoren) : []),
+    [eignungsMeta],
+  );
 
   const rechteckFertig = useCallback((geometrie: Polygon) => {
     setEntwurf(geometrie);
@@ -97,11 +130,27 @@ export function PlanerShell({ onAbgemeldet }: Props) {
           >
             Gebiete ({gebiete.length})
           </button>
+          <button
+            type="button"
+            className={reiter === "eignung" ? "aktiv" : ""}
+            onClick={() => setReiter("eignung")}
+          >
+            Eignung
+          </button>
         </nav>
 
         <div className="inhalt">
           {reiter === "funde" && <FundListe funde={funde} />}
           {reiter === "signale" && <SignalListe signale={signale} />}
+          {reiter === "eignung" && (
+            <EignungsPanel
+              an={eignungAn}
+              onUmschalten={setEignungAn}
+              meta={eignungsMeta}
+              fehler={eignungsFehler}
+              treffer={treffer}
+            />
+          )}
           {reiter === "gebiete" && (
             <GebietsPanel
               gebiete={gebiete}
@@ -132,6 +181,9 @@ export function PlanerShell({ onAbgemeldet }: Props) {
           zeichenmodus={zeichenmodus}
           entwurf={entwurf}
           onRechteck={rechteckFertig}
+          eignungAn={eignungAn}
+          eignungsFaktoren={eignungsFaktoren}
+          onEignungKlick={eignungAngetippt}
         />
         <Attribution meta={meta} />
       </section>

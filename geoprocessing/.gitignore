@@ -1,0 +1,6 @@
+# Rohdaten, Zwischenstände und fertige Kacheln gehören nicht ins Repo
+# (ADR 0008 §8). raw/ enthält mehrere hundert MB Landesdaten, work/ die
+# Zwischenraster, out/ das Ergebnis.
+raw/
+work/
+out/

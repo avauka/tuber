@@ -66,6 +66,19 @@ wird noch nichts (das ist AP10b). Auslösung, Variablen und Aktualisierung:
 Das Image bringt dafür `go-pmtiles` mit (eigene Build-Stage im
 `backend/Dockerfile`), das ADR 0003 später auch zur Laufzeit braucht.
 
+### Eignungskarte
+
+Die Kacheln entstehen **lokal** auf dem Rechner des Nutzers
+(`geoprocessing/`, ADR 0008 §8) und kommen über
+`POST /api/suitability/upload` auf das Volume — anders als bei der
+Basiskarte, die sich der Container selbst aus dem Netz holt. Rohdaten
+berühren den Server nie; auf `/data` liegen nur `suitability.pmtiles`
+(derzeit 7,7 MB) und `suitability.meta.json`.
+
+Der Upload prüft vor dem Schreiben den freien Platz und die
+PMTiles-Signatur und hängt erst danach um. Ablauf und Befehle:
+[`geoprocessing/README.md`](../../geoprocessing/README.md).
+
 ### Schema-Oberfläche
 
 Standardmässig sind `/docs`, `/redoc` und `/openapi.json` abgeschaltet. Für
@@ -114,6 +127,7 @@ Kommt vom Template. Railway stellt `DATABASE_URL` als Referenz bereit.
 | `PORT` | setzt Railway selbst | — |
 | `MEDIA_ROOT` | Pfad auf dem Media-Volume, z. B. `/data/media` | ab AP13 |
 | `BASEMAP_DIR` | Ablage der Basiskarte, Standard `/data` | nein |
+| `SUITABILITY_DIR` | Ablage der Eignungskarte, Standard `/data` | nein |
 | `FRONTEND_DIST` | gebautes Frontend, Standard `/app/static` | nein |
 | `DOCS_ENABLED` | **nicht setzen** — öffnet die Schema-Oberfläche | nein |
 | `BACKUP_DIR` | Ablage auf dem Volume, Standard `/data/backups` | ab AP15 |

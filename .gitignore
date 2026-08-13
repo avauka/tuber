@@ -8,3 +8,5 @@ dist/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+# Cookie-Jar der curl-Beispiele aus den READMEs — enthaelt eine Sitzung.
+kekse.txt

@@ -10,7 +10,8 @@ Invarianten: `CLAUDE.md`. Infrastruktur-Entscheidungen: `docs/decisions/`.
 - `backend/` — FastAPI + SQLAlchemy/GeoAlchemy2 + Alembic, pytest
 - `frontend/` — React + Vite + TS + MapLibre; `src/feld` und `src/planer` sind
   die zwei hart getrennten UI-Modi
-- `geoprocessing/` — Offline-Pipelines für die Eignungskarte (Phase 2, eigenes Env)
+- `geoprocessing/` — Offline-Pipelines für die Eignungskarte (Phase 2, läuft im
+  GDAL-Container; siehe `geoprocessing/README.md`)
 - `infra/` — Railway-Konfiguration, Backup-Skripte
 - `docs/` — Spec, ADRs
 

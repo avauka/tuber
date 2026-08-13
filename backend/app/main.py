@@ -22,6 +22,7 @@ from app.api import (
     finds,
     sessions,
     signals,
+    suitability,
     tracks,
 )
 from app.core.auth import require_session
@@ -131,6 +132,7 @@ def create_app() -> FastAPI:
     app.include_router(conditions.router)
     app.include_router(backups.router)
     app.include_router(basemap.router)
+    app.include_router(suitability.router)
 
     if docs_enabled():
         app.include_router(_docs_router(app))

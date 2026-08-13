@@ -67,3 +67,22 @@ export type BasiskartenMeta = {
   sha256: string;
   fetched_at: string;
 };
+
+/** suitability.meta.json, geschrieben von geoprocessing/stufe2_tiles.py. */
+export type EignungsMeta = {
+  gewichtssatz_version: number;
+  faktoren: Record<string, number>;
+  faktoren_fehlend: string[];
+  rasterweite_m: number | null;
+  klassengrenzen: number[];
+  quellen: { name?: string; herausgeber?: string; lizenz?: string; stand?: string }[];
+  generated_at: string;
+};
+
+/** Was beim Antippen einer Eignungsfläche sichtbar wird (Invariante 10). */
+export type EignungsTreffer = {
+  score: number;
+  klasse: number;
+  stufe: number;
+  teilscores: Record<string, number>;
+};
