@@ -11,11 +11,13 @@ import pytest
 
 from gewichte import KLASSENGRENZEN, klasse
 from kalk_zuordnung import (
+    DAEMPFUNG_OHNE_AUSSAGE,
     SCHWELLE,
     boden_score,
     kalkscore,
     kennlinie,
     litho_score,
+    verknuepft,
 )
 
 
@@ -176,7 +178,10 @@ def test_kalkstein_bleibt_oben_trotz_nichtssagendem_bodentyp():
     wert = kalkscore("Kalkstein, Mergelstein", "Braunerde")
 
     assert wert is not None
-    assert klasse(wert) >= 3
+    # Nicht ">= 3": Genau diese Deckelung nach unten hat den Fehler aus B1
+    # durchgelassen, den der Nachtrag korrigiert (57 km² Kalkstein-Mergelstein
+    # in der Bbox).
+    assert klasse(wert) == 4
 
 
 def test_kalkbodentyp_bestaetigt_und_traegt_nach():
@@ -205,3 +210,85 @@ def test_eine_fehlende_quelle_traegt_die_andere_allein():
 def test_ohne_jede_quelle_bleibt_die_zelle_leer():
     assert kalkscore(None, None) is None
     assert kalkscore("Gewässer", "") is None
+
+
+# ------------------------------- Dämpfung hinter der Kennlinie (Nachtrag B1)
+
+
+def test_flaeche_knapp_ueber_der_schwelle_bleibt_darueber():
+    """Der Regressionstest des Nachtrags.
+
+    Vorher wurde die Dämpfung auf den Rohwert angewandt: 56,7 wurde zu 48,2
+    und fiel unter die Schwelle, obwohl die Lithologie carbonathaltig ist.
+    Ein K.-o.-Kriterium durch die Hintertür, das ADR 0008 §4 ausdrücklich
+    verworfen hat.
+    """
+    roh, schweigt = verknuepft(litho_score("Mergelstein, Sandstein"), boden_score("Braunerde"))
+
+    assert schweigt is True
+    assert roh is not None and roh > SCHWELLE
+
+    wert = kalkscore("Mergelstein, Sandstein", "Braunerde")
+    assert wert is not None
+    assert klasse(wert) > 1
+
+
+def test_verknuepft_liefert_ungedaempft_und_meldet_den_zweig():
+    """Die Dämpfung gehört nicht mehr in den Rohwert."""
+    roh, schweigt = verknuepft(100.0, 25.0)
+
+    assert roh == 100.0
+    assert schweigt is True
+
+
+@pytest.mark.parametrize(
+    ("boden", "erwartet"),
+    [(100.0, False), (60.0, False), (10.0, False), (0.0, False), (25.0, True), (59.0, True)],
+)
+def test_daempfung_greift_nur_im_schweige_zweig(boden, erwartet):
+    """Bestätigender und überschreibender Zweig bleiben ungedämpft."""
+    _, schweigt = verknuepft(80.0, boden)
+
+    assert schweigt is erwartet
+
+
+def test_daempfung_wirkt_wie_ihr_wert():
+    """0,85 soll 0,85 bedeuten — der Grund für den Umbau.
+
+    Vor der Kennlinie angewandt wirkte die Konstante oberhalb der Schwelle
+    wie gemessen 0,743 bis 0,775, je nach Rohwert.
+    """
+    ungedaempft = kalkscore("Kalkstein", "Rendzina")  # bestätigender Zweig
+    gedaempft = kalkscore("Kalkstein", "Braunerde")  # Schweige-Zweig
+
+    assert ungedaempft is not None and gedaempft is not None
+    assert gedaempft == pytest.approx(ungedaempft * DAEMPFUNG_OHNE_AUSSAGE)
+
+
+def test_unterhalb_der_schwelle_aendert_die_reihenfolge_nichts():
+    """Dort ist die Kennlinie linear durch den Ursprung.
+
+    Beide Reihenfolgen sind gleichwertig — deshalb wechselt unterhalb der
+    Schwelle keine Fläche die Klasse.
+    """
+    wert = kalkscore("Sand, Kies", "Braunerde")
+    roh, _ = verknuepft(litho_score("Sand, Kies"), boden_score("Braunerde"))
+
+    assert wert is not None and roh is not None
+    assert wert == pytest.approx(kennlinie(roh * DAEMPFUNG_OHNE_AUSSAGE))
+
+
+# ---------------------------------- Zusammengesetzte Typen ohne Aussage (B3)
+
+
+@pytest.mark.parametrize(
+    "bodentyp", ["Niedermoor-Deckkulturboden", "Abtrags-Hochmoor-Deckkulturboden"]
+)
+def test_deckkulturboden_macht_den_ganzen_typ_zu_nodata(bodentyp):
+    """Geprüft und so belassen: 2,37 km² in der Bbox.
+
+    Aufgetragenes Material unbekannter Herkunft steht oben; aus dem
+    verschütteten Untergrund einen Kalkwert abzuleiten hiesse, über den
+    heutigen Wurzelraum etwas zu behaupten.
+    """
+    assert boden_score(bodentyp) is None

@@ -57,23 +57,26 @@ def leeres_verzeichnis(tmp_path, monkeypatch):
 # ------------------------------------------------------------- Gewichtssatz
 
 
-def test_gewichte_brauchen_eine_sitzung(anon_client, db_session):
-    assert anon_client.get("/api/suitability/weights").status_code == 401
+def test_gewichtssatz_liegt_versioniert_in_der_datenbank(db_session):
+    """Version 1 aus ADR 0008 §3, angelegt von der Migration.
 
+    Die Tabelle ist der Versionierungsanker: `suitability.meta.json` hält
+    fest, mit welcher Version die Kacheln entstanden sind. Ohne das liesse
+    sich in Phase 3 nicht rekonstruieren, welche Karte zu welchem Fund
+    gehoerte (ADR 0008 §7).
+    """
+    from sqlalchemy import select
 
-def test_aktiver_gewichtssatz_ist_der_startsatz(client):
-    """Version 1 aus ADR 0008 §3, angelegt von der Migration."""
-    body = client.get("/api/suitability/weights").json()
+    from app.models.core import SuitabilityWeightSet
 
-    assert body["version"] == 1
-    assert body["weights"]["kalk"] == 30
-    assert sum(body["weights"].values()) == pytest.approx(100)
+    satz = db_session.execute(
+        select(SuitabilityWeightSet).where(SuitabilityWeightSet.is_active)
+    ).scalar_one()
 
-
-def test_gewichtssatz_nennt_alle_sechs_faktoren(client):
-    body = client.get("/api/suitability/weights").json()
-
-    assert set(body["weights"]) == {
+    assert satz.version == 1
+    assert satz.weights["kalk"] == 30
+    assert sum(satz.weights.values()) == pytest.approx(100)
+    assert set(satz.weights) == {
         "kalk",
         "wasser",
         "exposition",
@@ -83,14 +86,39 @@ def test_gewichtssatz_nennt_alle_sechs_faktoren(client):
     }
 
 
-def test_kein_schreib_endpunkt_fuer_gewichte(client):
-    """AP17a §5: Die Settings-Seite ist ein eigenes Paket.
+def test_hoechstens_ein_aktiver_satz(db_session):
+    """In der Datenbank erzwungen, nicht nur in der Anwendung.
 
-    Ein PATCH ohne Oberfläche wäre unbenutzt und ungetestet — und ein
-    unbemerkt geänderter Gewichtssatz macht bestehende Kacheln unerklärbar.
+    Zwei aktive Saetze waeren im Nachhinein nicht aufloesbar: Man wuesste
+    nicht, mit welchem die vorhandenen Kacheln entstanden sind.
     """
-    assert client.patch("/api/suitability/weights", json={"weights": {}}).status_code == 405
-    assert client.post("/api/suitability/weights", json={"weights": {}}).status_code == 405
+    import uuid
+
+    from sqlalchemy.exc import IntegrityError
+
+    from app.models.core import SuitabilityWeightSet
+
+    db_session.add(
+        SuitabilityWeightSet(id=uuid.uuid4(), version=99, weights={"kalk": 100}, is_active=True)
+    )
+    with pytest.raises(IntegrityError):
+        db_session.flush()
+    db_session.rollback()
+
+
+@pytest.mark.parametrize("methode", ["get", "post", "patch"])
+def test_kein_endpunkt_fuer_den_gewichtssatz(client, methode):
+    """AP17a-Nachtrag B6: bewusst entfernt.
+
+    Der Endpunkt haette den aktiven DB-Satz geliefert, waehrend der Planer
+    die tatsaechlich angewandten Gewichte aus suitability.meta.json liest.
+    Nach einer Umgewichtung ohne Pipelinelauf haette er eine Zahl geliefert,
+    die zu keiner ausgelieferten Karte gehoert. Zurueck kommt er mit der
+    Settings-Seite.
+    """
+    antwort = getattr(client, methode)("/api/suitability/weights")
+
+    assert antwort.status_code in (404, 405)
 
 
 # ------------------------------------------------------------ Auslieferung

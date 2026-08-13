@@ -28,7 +28,7 @@ from pathlib import Path
 import numpy as np
 from osgeo import gdal, ogr, osr
 
-from gewichte import KLASSENGRENZEN, VERSION, klasse, umgelegt
+from gewichte import KLASSENGRENZEN, VERSION, umgelegt
 from raster import ZIELRASTER
 
 gdal.UseExceptions()
@@ -60,9 +60,23 @@ FAKTOR_DATEIEN = {
 STUFEN_DATEI = "kalk_stufe.tif"
 
 # Der Score wird auf 5 Punkte gerundet, bevor Flächen gebildet werden.
-# Ohne diese Stufung entstünde je Wert eine eigene Fläche und die
-# Kachelpyramide würde unnötig gross — 5 Punkte sind feiner als die vier
-# Klassen und grob genug, dass benachbarte Zellen zusammenfallen.
+# Ohne diese Stufung entstünde je Wert eine eigene Fläche.
+#
+# Gemessen am Stand vom 2026-08-13 (AP17a-Nachtrag A3), beide Gründe:
+#
+# 1. **Grösse.** 7,67 MB mit Rundung gegen 11,26 MB ohne, bei 7934 statt
+#    14 664 Flächen — 3,59 MB Unterschied.
+# 2. **Auflösung.** Ohne Rundung meldet GDAL beim Kachelschreiben "at least
+#    one tile exceeded the default maximum tile size of 500000 bytes and was
+#    encoded at lower resolution"; mit Rundung nicht. Ungerundet würde also
+#    ausgerechnet die dichteste Kachel stillschweigend vergröbert.
+#
+# "Ohne Rundung" und "auf ganze Zahlen gerundet" sind hier dasselbe: Der
+# Faktorlayer ist ein Byte-Raster, der Score also ohnehin ganzzahlig. Die
+# beiden Archive waren byte-identisch.
+#
+# **Die Klasse wird trotzdem aus dem ungerundeten Wert abgeleitet** (B2) —
+# siehe _klassen_raster.
 SCORE_SCHRITT = 5
 
 # Flächen unter dieser Zellzahl werden dem Nachbarn zugeschlagen. 25 Zellen
@@ -139,10 +153,44 @@ def _gesamtscore(faktoren: dict[str, np.ndarray]) -> tuple[np.ndarray, np.ndarra
     return summe, gueltig, anteile
 
 
+def _klassen_raster(scores: np.ndarray) -> np.ndarray:
+    """Klasse je Zelle — dieselben Grenzen wie gewichte.klasse, vektorisiert."""
+    ergebnis = np.ones(scores.shape, dtype=np.uint16)
+    for grenze in KLASSENGRENZEN:
+        ergebnis += (scores >= grenze).astype(np.uint16)
+    return ergebnis
+
+
+def _gerundet_und_geklemmt(summe: np.ndarray, klassen: np.ndarray) -> np.ndarray:
+    """Score auf SCORE_SCHRITT runden, ohne die Klassengrenze zu überschreiten.
+
+    Ohne die Klemmung stünde in der Aufschlüsselung ein Score, der über der
+    Grenze seiner eigenen Klasse liegt: 48,2 rundet auf 50, die Klasse ist
+    aber aus 48,2 abgeleitet und damit 2. Score 50 neben Klasse 2 wäre für
+    den Leser ein Widerspruch — und gegen den Geist von Invariante 10, die
+    verlangt, dass die Zahlen sich erklären.
+
+    Da alle Klassengrenzen Vielfache von SCORE_SCHRITT sind, kann die
+    Rundung nur nach oben über eine Grenze schieben; ein Schritt zurück
+    genügt. Die Schleife ist nur die Absicherung gegen andere Grenzen.
+    """
+    gerundet = np.round(summe / SCORE_SCHRITT) * SCORE_SCHRITT
+    for _ in range(3):
+        zu_hoch = _klassen_raster(gerundet) > klassen
+        if not zu_hoch.any():
+            break
+        gerundet = np.where(zu_hoch, gerundet - SCORE_SCHRITT, gerundet)
+    return np.clip(gerundet, 0, 100)
+
+
 def _flaechen_schreiben(schluessel: np.ndarray, gueltig: np.ndarray) -> int:
     """Schlüsselraster in Polygone überführen.
 
-    Der Schlüssel trägt Score und Datenstufe zugleich: `score * 10 + stufe`.
+    Der Schlüssel trägt drei Werte zugleich:
+    `((gerundeter Score + 1) * 10 + Klasse) * 10 + Datenstufe`.
+
+    Die Klasse reist mit, weil sie aus dem **ungerundeten** Score stammt und
+    sich nach der Rundung nicht mehr rekonstruieren liesse (B2).
     Polygonisiert wird einmal; die Attribute entstehen beim Zerlegen. Mit
     weiteren Faktoren (AP17b) wächst der Schlüssel um deren Klassen.
     """
@@ -198,10 +246,14 @@ def _attribute_ergaenzen(anteile: dict[str, float]) -> int:
         schluessel = objekt.GetField("schluessel")
         # Der Schlüssel trägt den um eins erhöhten Score, damit Score 0 mit
         # Stufe 0 nicht auf den reservierten Schlüssel 0 fällt.
-        score = schluessel // 10 - 1
         stufe = schluessel % 10
+        rest = schluessel // 10
+        klassennummer = rest % 10
+        score = rest // 10 - 1
         objekt.SetField("score", int(score))
-        objekt.SetField("klasse", klasse(float(score)))
+        # Aus dem Schlüssel, nicht aus dem gerundeten Score neu berechnet:
+        # Die Klasse gehört zum ungerundeten Wert (B2).
+        objekt.SetField("klasse", int(klassennummer))
         objekt.SetField("stufe", int(stufe))
         # Solange nur ein Faktor existiert, ist sein Teilscore der
         # Gesamtscore — er trägt 100 %. Mit mehreren Faktoren kommen die
@@ -273,10 +325,17 @@ def main() -> int:
     stufen_pfad = WORK / STUFEN_DATEI
     stufen = _lesen(stufen_pfad) if stufen_pfad.exists() else np.full(summe.shape, 0, np.uint8)
 
-    gerundet = (np.round(summe / SCORE_SCHRITT) * SCORE_SCHRITT).astype(np.uint16)
+    # Klasse aus dem ungerundeten Wert, Score gerundet und in die Klasse
+    # geklemmt (B2).
+    klassen = _klassen_raster(summe)
+    gerundet = _gerundet_und_geklemmt(summe, klassen).astype(np.uint16)
     # Schlüssel 0 ist reserviert für "keine Daten"; deshalb +1 auf den
     # Score, damit auch Score 0 mit Stufe 0 unterscheidbar bleibt.
-    schluessel = np.where(gueltig, (gerundet + 1) * 10 + stufen.astype(np.uint16), 0)
+    schluessel = np.where(
+        gueltig,
+        ((gerundet + 1) * 10 + klassen) * 10 + stufen.astype(np.uint16),
+        0,
+    )
 
     print("Flächen bilden …")
     polygone = _flaechen_schreiben(schluessel.astype(np.uint16), gueltig)

@@ -32,19 +32,49 @@ Geprüft und verworfen: die Felder `ZPH_A`/`ZPH_G` der BK 50. Sie sehen wie
 ein pH aus, sind aber bei 7,0 gekappt und liegen für Rendzina (6,88) kaum
 über Braunerde (6,66) — als Kalkzeiger unbrauchbar.
 
-Offene Punkte für die fachliche Prüfung
----------------------------------------
-1. Die Gewichtung der Gesteinsanteile nach Position (unten `ANTEIL_GEWICHT`)
-   unterstellt, dass die Reihenfolge in `LITHOLOG_1` die Dominanz abbildet.
-   Das ist der Anschauung nach so, aber nicht aus der Metadatei belegt.
-2. Bei zusammengesetzten Bodentypen ("Rendzina-Braunerde") wird der zweite
-   Teil als Haupttyp gewichtet. Beide Schreibweisen kommen in den Daten vor,
-   die Konvention ist also bedeutungstragend — nachzulesen wäre sie in
-   `BK50_Methoden/TYP.pdf`.
-3. Gips und Anhydrit stehen hier bei 55: basenreich und hoch-pH, aber kein
-   Carbonat. Ob Trüffelstandorte im Gipskeuper das rechtfertigen, ist eine
-   Feldfrage.
-4. Vulkanit (Eifel) steht bei 30: basenreiche Verwitterung, aber kalkfrei.
+Geprüfte Abwesenheiten
+----------------------
+Damit niemand dieselbe Frage zweimal stellt (Lauf A des AP17a-Nachtrags,
+2026-08-13, Flächen jeweils innerhalb der Bbox):
+
+* **Terra fusca** — der Kalkverwitterungslehm über Devon- und Massenkalk,
+  fachlich der naheliegende Kandidat neben Rendzina. Kommt in der BK 50
+  **nicht vor**, weder in der Bbox noch landesweit; der Datensatz kennt an
+  Terra-Typen ausschliesslich "Terra rossa" (65 ha landesweit, keine Fläche
+  in der Bbox). Kein Tabelleneintrag nötig.
+* **Geschiebemergel** — landesweit die grösste Kalkfläche NRWs. Steht in der
+  GK 100 **nicht in `LITHOLOG_1`**, sondern im Feld `EINHEIT`
+  ("Grundmoräne", 1745 Objekte). Deren Lithologie lautet "Schluff, Ton,
+  Steine"; dieser Wert hat in der Bbox **keine Fläche** — die Grundmoräne
+  liegt vollständig nördlich davon. Für diesen Ausschnitt gegenstandslos.
+
+Offene und geschlossene Punkte der fachlichen Prüfung
+-----------------------------------------------------
+1. **Offen.** Die Gewichtung der Gesteinsanteile nach Position (unten
+   `ANTEIL_GEWICHT`) unterstellt, dass die Reihenfolge in `LITHOLOG_1` die
+   Dominanz abbildet. Weder Legende noch Metadatei des Downloads belegen
+   das, und weitere Anteils- oder Prozentfelder führt der Datensatz nicht.
+   Ebenso unbelegt ist die Abklingfunktion `1/(i+1)` — sie ist eine
+   Setzung, keine Ableitung. Beides bleibt offen; geraten wird nicht.
+   Klassenwirkung nachweisbar ("Kalkstein, Tonstein" 73,3 gegen "Tonstein,
+   Kalkstein" 46,7), in der Bbox aber ohne Fläche: Beide Kombinationen
+   kommen dort nicht vor.
+2. **Geschlossen.** Bei zusammengesetzten Bodentypen gilt der letzte Teil
+   als Haupttyp — das entspricht der KA5-Nomenklatur, in der der Grundtyp
+   hinten und der Modifikator vorn steht. Der Nebenbefund dazu ist
+   vermessen: Mit `HAUPTTYP_ANTEIL = 0.6` ergibt "Rendzina-Braunerde" genau
+   55 und liegt damit knapp unter `BODEN_BESTAETIGT_AB` = 60. Betroffen
+   sind 13,87 km² dieses Typs; davon erreichen 1,17 km² überhaupt den
+   Rohwert 55, weil der Rest über die Lithologie höher liegt. Beide
+   Konstanten bleiben deshalb unverändert — 1,17 km² von 7553 km²
+   rechtfertigen keine Justierung, die AP17b ohnehin neu bewertet.
+3. **Geschlossen.** Gips und Anhydrit stehen bei 55, dem einzigen
+   Tabellenwert knapp über der Schwelle. Die zugehörige Perm-Einheit liegt
+   am Ostrand NRWs bei Höxter, weit ausserhalb der Bbox (Ostgrenze 7,2°);
+   im Ausschnitt hat sie keine Fläche. Bei einer Erweiterung der Bbox neu
+   zu bewerten.
+4. **Geschlossen.** Vulkanit (Eifel) steht bei 30 und damit unterhalb der
+   Schwelle. Der genaue Wert ist klassenunwirksam, solange er dort bleibt.
 """
 
 # Wert, ab dem eine Fläche als kalkgeprägt gilt. Darunter greift die steile
@@ -195,7 +225,7 @@ BODEN_ZUSAETZE = frozenset({"Auftrags", "Abtrags", "Erd"})
 # Anteil des letztgenannten Teils bei zusammengesetzten Bodentypen. Die
 # Daten führen beide Reihenfolgen ("Rendzina-Braunerde" und
 # "Braunerde-Rendzina"), die Reihenfolge trägt also Bedeutung; der zweite
-# Teil gilt hier als Haupttyp (offener Punkt 2).
+# Teil gilt als Haupttyp — KA5-Nomenklatur, siehe Punkt 2 im Docstring.
 HAUPTTYP_ANTEIL = 0.6
 
 # Verknüpfung der beiden Quellen innerhalb der Kaskadenstufe 2.
@@ -220,8 +250,24 @@ BODEN_BESTAETIGT_AB = 60.0
 BODEN_UEBERSCHREIBT_BIS = 10.0
 
 # Wo der Bodentyp nichts über Carbonat sagt (Braunerde, Parabraunerde,
-# Gley …), bleibt die Lithologie massgeblich — leicht gedämpft, weil eine
-# mächtige Lössdecke den Kalk aus dem Wurzelraum halten kann.
+# Gley …), bleibt die Lithologie massgeblich — gedämpft, weil eine mächtige
+# Lössdecke den Kalk aus dem Wurzelraum halten kann.
+#
+# **Die Dämpfung greift nach der Kennlinie, nicht davor** (AP17a-Nachtrag,
+# B1). Davor angewandt wirkte die Konstante nicht wie 0,85: Die Kennlinie
+# spreizt oberhalb der Schwelle mit 1,5, wodurch aus 0,85 auf dem Rohwert
+# ein Faktor von gemessen 0,743 bis 0,775 auf dem ausgelieferten Score
+# wurde — abhängig davon, wo der Rohwert lag, also nicht einmal konstant.
+# Eine benannte Konstante soll bedeuten, was sie sagt; hinter der Kennlinie
+# tut sie das.
+#
+# Wirkung des Umbaus, gemessen an den Faktorlayern vom 2026-08-13: 43,26 km²
+# wechseln von Klasse 3 nach 4, keine Fläche wechselt in anderer Richtung.
+# Unterhalb der Schwelle ändert sich nichts — dort ist die Kennlinie linear
+# durch den Ursprung, beide Reihenfolgen sind gleichwertig.
+#
+# Der Wert 0,85 selbst bleibt unbelegt und gehört auf die Kalibrierliste für
+# Phase 3.
 DAEMPFUNG_OHNE_AUSSAGE = 0.85
 
 
@@ -260,7 +306,21 @@ def _grundtyp(teil: str) -> str:
 
 
 def boden_score(bodentyp: str | None) -> float | None:
-    """Kalkscore eines Bodentyps aus IS BK 50."""
+    """Kalkscore eines Bodentyps aus IS BK 50.
+
+    Enthält ein zusammengesetzter Name einen Teil ohne Aussage, wird der
+    **ganze** Wert zu None — geprüft und so belassen (AP17a-Nachtrag B3).
+    Betroffen sind "Abtrags-Hochmoor-Deckkulturboden" (1,95 km²) und
+    "Niedermoor-Deckkulturboden" (0,42 km²), zusammen 2,37 km² von
+    7553 km². In beiden steht der Deckkulturboden **hinten** und ist damit
+    nach der Konvention dieser Datei der Haupttyp: Was oben liegt, ist
+    aufgebrachtes Material unbekannter Herkunft. Aus dem verschütteten
+    Untergrund einen Kalkwert abzuleiten hiesse, über den heutigen
+    Wurzelraum etwas zu behaupten, das die Quelle nicht hergibt.
+
+    Fiele der Teil ohne Aussage einmal an eine andere Stelle als hinten,
+    wäre die Regel neu zu prüfen; in diesem Datenstand kommt das nicht vor.
+    """
     if not bodentyp or not bodentyp.strip():
         return None
 
@@ -301,27 +361,31 @@ def kennlinie(rohwert: float) -> float:
     return 25.0 + (wert - SCHWELLE) * (75.0 / (100.0 - SCHWELLE))
 
 
-def verknuepft(litho: float | None, boden: float | None) -> float | None:
-    """Lithologie und Bodentyp zu einem Rohwert (vor der Kennlinie).
+def verknuepft(litho: float | None, boden: float | None) -> tuple[float | None, bool]:
+    """Lithologie und Bodentyp zu einem Rohwert — **ungedämpft**.
+
+    Zweiter Rückgabewert: ob der Schweige-Zweig gegriffen hat, der Bodentyp
+    also weder bestätigt noch überschreibt. Nur dann wird später gedämpft —
+    und zwar hinter der Kennlinie, siehe DAEMPFUNG_OHNE_AUSSAGE.
 
     Siehe die Begründung bei BODEN_BESTAETIGT_AB: Der Bodentyp bestätigt,
     überschreibt oder schweigt — gemittelt wird nicht.
     """
     if litho is None and boden is None:
-        return None
+        return None, False
     if boden is None:
-        return litho
+        return litho, False
     if litho is None:
-        return boden
+        return boden, False
 
     if boden >= BODEN_BESTAETIGT_AB:
         # Kalkbodentyp: bestätigt die Lithologie und kann eine im
         # 1:100.000 übersehene Kalklinse nachtragen.
-        return max(litho, boden)
+        return max(litho, boden), False
     if boden <= BODEN_UEBERSCHREIBT_BIS:
         # Sauer und nass schlägt den Untergrund.
-        return min(litho, boden)
-    return max(litho * DAEMPFUNG_OHNE_AUSSAGE, boden)
+        return min(litho, boden), False
+    return max(litho, boden), True
 
 
 def kalkscore(lithologie: str | None, bodentyp: str | None) -> float | None:
@@ -330,6 +394,13 @@ def kalkscore(lithologie: str | None, bodentyp: str | None) -> float | None:
     Liegt nur eine der beiden Quellen vor, trägt sie allein — das ist immer
     noch Stufe 2, nur auf schmalerer Grundlage. Fehlen beide, bleibt die
     Zelle leer.
+
+    Reihenfolge: erst die Kennlinie auf den ungedämpften Rohwert, dann die
+    Dämpfung. Andersherum verschiebt die Spreizung der Kennlinie die
+    Bedeutung der Konstante (AP17a-Nachtrag B1).
     """
-    roh = verknuepft(litho_score(lithologie), boden_score(bodentyp))
-    return None if roh is None else kennlinie(roh)
+    roh, schweigt = verknuepft(litho_score(lithologie), boden_score(bodentyp))
+    if roh is None:
+        return None
+    score = kennlinie(roh)
+    return score * DAEMPFUNG_OHNE_AUSSAGE if schweigt else score

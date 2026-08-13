@@ -1,11 +1,18 @@
 """Eignungskarte ausliefern und entgegennehmen (ADR 0008, AP17a §5, §6).
 
-Drei Dinge und ein viertes:
+Drei Dinge:
 
 * die Kacheln (`FileResponse`, Range-fähig, wie die Basiskarte),
 * die Metadatei mit Gewichtssatz, Faktoren und Quellen,
-* den aktiven Gewichtssatz aus der Datenbank,
 * und den Upload, über den die lokal erzeugte Datei auf das Volume kommt.
+
+**Kein Endpunkt für den Gewichtssatz** (AP17a-Nachtrag B6). Er hätte den
+aktiven Satz aus der Datenbank geliefert, während der Planer die
+tatsächlich angewandten Gewichte aus `suitability.meta.json` liest — und
+nur die stehen in den Kacheln. Nach einer Umgewichtung ohne Pipelinelauf
+lieferte der Endpunkt eine Zahl, die zu keiner ausgelieferten Karte
+gehört. Tabelle und Migration bleiben, sie sind der Versionierungsanker;
+zurück kommt der Endpunkt mit der Settings-Seite, die ihn braucht.
 
 **Warum es hier einen Schreib-Endpunkt gibt, bei der Basiskarte aber nicht.**
 Die Basiskarte holt sich der Container selbst aus dem Netz (AP10a); ein
@@ -23,11 +30,8 @@ from typing import Annotated
 from fastapi import APIRouter, File, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
 from pydantic import ValidationError
-from sqlalchemy import select
 
-from app.core.db import DbSession
-from app.models.core import SuitabilityWeightSet
-from app.schemas.suitability import SuitabilityMeta, UploadErgebnis, WeightSet
+from app.schemas.suitability import SuitabilityMeta, UploadErgebnis
 from app.services.suitability import (
     TILES_ROUTE,
     SuitabilityError,
@@ -44,27 +48,6 @@ MEDIA_TYPE = "application/octet-stream"
 def _nicht_vorhanden(detail: str) -> HTTPException:
     """503, nicht 500 — die Karte fehlt, der Dienst ist in Ordnung."""
     return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=detail)
-
-
-@router.get("/weights", response_model=WeightSet)
-def aktiver_gewichtssatz(db: DbSession) -> WeightSet:
-    """Der aktive Satz (ADR 0008 §3).
-
-    Kein Schreib-Endpunkt in diesem Paket (AP17a §5): Die Settings-Seite
-    ist ein eigenes Paket, und ein PATCH ohne Oberfläche wäre unbenutzt und
-    ungetestet.
-    """
-    satz = db.execute(
-        select(SuitabilityWeightSet).where(SuitabilityWeightSet.is_active)
-    ).scalar_one_or_none()
-    if satz is None:
-        raise _nicht_vorhanden("Kein aktiver Gewichtssatz in der Datenbank. Migration gelaufen?")
-    return WeightSet(
-        version=satz.version,
-        weights={name: float(wert) for name, wert in satz.weights.items()},
-        note=satz.note,
-        created_at=satz.created_at,
-    )
 
 
 @router.get(f"/{TILES_ROUTE}")

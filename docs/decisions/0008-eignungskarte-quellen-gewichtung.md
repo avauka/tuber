@@ -269,3 +269,87 @@ unberührt.
 
 Die Ablehnung aus AP10a bleibt für die Basiskarte gültig. Sie überträgt sich
 nicht.
+
+## 13. Offen: Rekultivierungsflächen im Rheinischen Revier
+
+**Befund aus dem AP17a-Nachtrag, Lauf B10 (2026-08-13).**
+
+Der flächenmässig grösste bestätigende Bodentyp im Kartenausschnitt ist
+**Auftrags-Pararendzina** mit 106,8 km² — mehr als Pararendzina (40,7),
+Braunerde-Rendzina (17,1) und Rendzina (6,6) zusammen. Von 187 Flächen
+liegen **91 % (97,5 km²) innerhalb von 15 km um Jülich, Düren, Bedburg,
+Elsdorf, Kerpen, Grevenbroich, Erkelenz oder Inden**; die drei grössten
+Einzelflächen bei Inden (12,7 km²), Hambach/Kerpen (8,2) und
+Garzweiler/Bedburg (7,8). Das sind Rekultivierungsflächen des Rheinischen
+Braunkohlereviers: aufgetragener carbonathaltiger Löss über verkipptem
+Abraum.
+
+**Der Kalkfaktor bewertet sie zu Recht hoch.** Das Substrat ist basenreich
+und carbonathaltig, die Zuordnung ist fachlich richtig. Habitatfachlich
+sind es trotzdem junge Bestände auf geschüttetem Material — ohne
+gewachsenen Mykorrhiza-Kontakt und ohne die Bodenentwicklung, die ein
+Trüffelstandort braucht.
+
+**Nicht im Kalkfaktor zu korrigieren.** Der Faktor misst Carbonat, und das
+ist vorhanden. Was fehlt, sind Bestandsalter und Bodenreife; die gehören zu
+Bestandsstruktur und Wirtsbaum (AP17b) oder in einen Ausschluss ausserhalb
+des Scores, wie ihn §4 für Sperrflächen vorsieht. Bis dahin steht der
+Befund hier, damit niemand die hohen Werte im Revier für einen Fehler der
+Kalk-Tabelle hält.
+
+## 14. Anhang: Flächenbefunde des Kartenausschnitts (Stand 2026-08-13)
+
+Erhoben in Lauf A des AP17a-Nachtrags, Bbox 5.4,49.7,7.2,51.1, Flächen auf
+den Ausschnitt zugeschnitten und in EPSG:25832 gemessen. Die Zahlen stehen
+hier, weil sie mehrere Konstanten begründen und die Auswertung selbst unter
+`geoprocessing/work/` liegt — also ausserhalb der Versionsverwaltung.
+
+Kartierte Fläche mit Datenlage: **7553 km²** von 21 409 km² Bbox (35,3 %);
+der Rest ist Rheinland-Pfalz, Wallonien und die Niederlande, für die es
+nach §6 keine Eignungskarte gibt.
+
+**Kalkträger nach Lithologie (Tabellenwert ≥ 50): 332,3 km²**
+
+| Lithologie | km² |
+|---|---|
+| Kalkstein | 128,0 |
+| Dolomitstein | 77,7 |
+| Kalkstein, Mergelstein | 57,1 |
+| Kalkstein, Mergelstein, Schluffstein | 26,6 |
+| Kalksandstein | 24,6 |
+| Kalkstein, Dolomitstein | 8,7 |
+| Mergelstein | 7,1 |
+
+**Bestätigende Bodentypen (Tabellenwert ≥ 60): 171,4 km²** — davon
+Auftrags-Pararendzina 106,6 (siehe §13), Pararendzina 40,7,
+Braunerde-Rendzina 17,1, Rendzina 6,6.
+
+**Am Rand der Schwelle:** Im Rohwertband 40–60 liegen insgesamt nur
+**1,17 km²**, und zwar bei genau zwei Werten: 40,0 (0,002 km²) und 55,0
+(1,168 km², durchweg Rendzina-Braunerde). Die Schwelle bei 50 entscheidet
+also über einen verschwindenden Flächenanteil — relevant für jede
+Diskussion über `SCHWELLE`, `BODEN_BESTAETIGT_AB` und `HAUPTTYP_ANTEIL`.
+
+**Ohne Zuordnung: 351,8 km²** — leerer Bodentyp 242,1, Gewässer 56,8,
+Abraum/Müll/Bergematerial/Erdaushub 50,5, Deckkulturboden-Kombinationen
+2,4. Eine unbekannte Angabe in *einer* Quelle lässt die Zelle nicht leer,
+solange die andere trägt.
+
+**Geprüfte Abwesenheiten:** Terra fusca kommt in der BK 50 nicht vor
+(landesweit nur Terra rossa). Geschiebemergel steht nicht in `LITHOLOG_1`,
+sondern über das Feld `EINHEIT` ("Grundmoräne"); diese Flächen liegen
+vollständig nördlich der Bbox.
+
+**Klassenverteilung** vor und nach der Korrektur der Dämpfungsreihenfolge
+(AP17a-Nachtrag B1):
+
+| Klasse | vorher km² | nachher km² |
+|---|---|---|
+| 1 — gering | 7069,8 | 7069,8 |
+| 2 — mäßig | 1,5 | 1,5 |
+| 3 — gut | 157,4 | 114,2 |
+| 4 — sehr gut | 324,5 | 367,8 |
+
+43,26 km² wechseln von Klasse 3 nach 4, keine Fläche in anderer Richtung.
+Unterhalb der Schwelle ändert sich nichts: Dort ist die Kennlinie linear
+durch den Ursprung, beide Reihenfolgen sind gleichwertig.

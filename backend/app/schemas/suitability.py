@@ -4,23 +4,7 @@ Sprachregelung, nicht verhandelbar (Invariante 9): „Eignung", „suitability" 
 nie „Wahrscheinlichkeit" oder „probability", auch nicht in Feldnamen.
 """
 
-from datetime import datetime
-
 from pydantic import BaseModel
-
-
-class WeightSet(BaseModel):
-    """Der aktive Gewichtssatz (ADR 0008 §3).
-
-    `weights` ist Faktor -> Prozent. Die Version steht auch in
-    `suitability.meta.json` der erzeugten Kacheln; stimmen beide nicht
-    überein, wurde seit dem letzten Pipeline-Lauf umgewichtet.
-    """
-
-    version: int
-    weights: dict[str, float]
-    note: str | None
-    created_at: datetime
 
 
 class SuitabilityMeta(BaseModel):

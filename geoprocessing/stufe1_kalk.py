@@ -52,7 +52,9 @@ BODENTYP_FELD = "TYP_TEXT"
 
 SCORE_TIF = WORK / "kalk_score.tif"
 STUFE_TIF = WORK / "kalk_stufe.tif"
-BERICHT = WORK / "kalk_stufe1.json"
+# Name laut AP17a-Nachtrag B4: Der Bericht ist die Metadatei des
+# Faktorlayers und trägt dessen Namen.
+BERICHT = WORK / "kalk.meta.json"
 
 # 255 als nodata, weil der Score selbst nur 0-100 belegt.
 NODATA = 255
@@ -61,6 +63,32 @@ KASKADENSTUFE = 2
 
 class PipelineFehler(RuntimeError):
     """Abbruchgrund, der dem Nutzer etwas sagt."""
+
+
+def _bbox_geometrie() -> ogr.Geometry:
+    """Der Kartenausschnitt als Polygon — zum Zuschneiden der Flächen."""
+    min_x, min_y, max_x, max_y = ZIELRASTER.bbox
+    ring = ogr.Geometry(ogr.wkbLinearRing)
+    for x, y in ((min_x, min_y), (max_x, min_y), (max_x, max_y), (min_x, max_y), (min_x, min_y)):
+        ring.AddPoint_2D(float(x), float(y))
+    flaeche = ogr.Geometry(ogr.wkbPolygon)
+    flaeche.AddGeometry(ring)
+    return flaeche
+
+
+def _flaeche_km2(geometrie: ogr.Geometry | None, ausschnitt: ogr.Geometry) -> float:
+    """Fläche innerhalb des Ausschnitts, in km². Robust gegen kaputte Ringe."""
+    if geometrie is None:
+        return 0.0
+    try:
+        if ausschnitt.Contains(geometrie):
+            return geometrie.GetArea() / 1e6
+        return geometrie.Intersection(ausschnitt).GetArea() / 1e6
+    except RuntimeError:
+        try:
+            return geometrie.MakeValid().Intersection(ausschnitt).GetArea() / 1e6
+        except RuntimeError:
+            return 0.0
 
 
 def _zielraster(pfad: Path, dtype: int = gdal.GDT_Byte) -> gdal.Dataset:
@@ -117,7 +145,8 @@ def _scores_brennen(
     ziel_layer.CreateField(ogr.FieldDefn("score", ogr.OFTInteger))
 
     zwischenspeicher: dict[str, float | None] = {}
-    ohne_zuordnung: dict[str, int] = {}
+    ohne_zuordnung: dict[str, dict[str, float]] = {}
+    ausschnitt = _bbox_geometrie()
     gezaehlt = 0
     uebernommen = 0
 
@@ -129,10 +158,15 @@ def _scores_brennen(
         if schluessel not in zwischenspeicher:
             zwischenspeicher[schluessel] = bewerten(rohwert)
         wert = zwischenspeicher[schluessel]
-        if wert is None:
-            ohne_zuordnung[schluessel] = ohne_zuordnung.get(schluessel, 0) + 1
-            continue
         geometrie = objekt.GetGeometryRef()
+        if wert is None:
+            # Nicht nur zählen, sondern die Fläche mitnehmen: Ob ein
+            # unbekannter Wert 0,4 km² oder 250 km² gross ist, entscheidet,
+            # ob er die Karte betrifft (AP17a-Nachtrag B4).
+            eintrag = ohne_zuordnung.setdefault(schluessel, {"objekte": 0, "km2": 0.0})
+            eintrag["objekte"] += 1
+            eintrag["km2"] += _flaeche_km2(geometrie, ausschnitt)
+            continue
         if geometrie is None:
             continue
         neu = ogr.Feature(definition)
@@ -146,12 +180,16 @@ def _scores_brennen(
     raster.FlushCache()
     raster = None
 
+    sortiert = sorted(ohne_zuordnung.items(), key=lambda p: -p[1]["km2"])
     return {
         "quelle": quelle.name,
         "feld": feld,
         "objekte_in_bbox": gezaehlt,
         "gerastert": uebernommen,
-        "werte_ohne_zuordnung": dict(sorted(ohne_zuordnung.items(), key=lambda p: -p[1])),
+        "werte_ohne_zuordnung": [
+            {"wert": wert, "objekte": int(zahlen["objekte"]), "km2": round(zahlen["km2"], 3)}
+            for wert, zahlen in sortiert
+        ],
     }
 
 
@@ -209,17 +247,20 @@ def main() -> int:
 
     # Verknüpfung wie in kalk_zuordnung.verknuepft, nur vektorisiert: Der
     # Bodentyp bestätigt, überschreibt oder schweigt — gemittelt wird nicht.
+    # Der Rohwert bleibt hier ungedämpft; gedämpft wird unten hinter der
+    # Kennlinie (AP17a-Nachtrag B1).
     roh = np.zeros(litho.shape, dtype=np.float32)
     beide = hat_litho & hat_boden
     l_f = litho.astype(np.float32)
     b_f = boden.astype(np.float32)
+    schweigt = beide & (b_f > BODEN_UEBERSCHREIBT_BIS) & (b_f < BODEN_BESTAETIGT_AB)
     roh[beide] = np.where(
         b_f[beide] >= BODEN_BESTAETIGT_AB,
         np.maximum(l_f[beide], b_f[beide]),
         np.where(
             b_f[beide] <= BODEN_UEBERSCHREIBT_BIS,
             np.minimum(l_f[beide], b_f[beide]),
-            np.maximum(l_f[beide] * DAEMPFUNG_OHNE_AUSSAGE, b_f[beide]),
+            np.maximum(l_f[beide], b_f[beide]),
         ),
     )
     nur_litho = hat_litho & ~hat_boden
@@ -234,6 +275,8 @@ def main() -> int:
         roh * (25.0 / SCHWELLE),
         25.0 + (roh - SCHWELLE) * (75.0 / (100.0 - SCHWELLE)),
     )
+    # Dämpfung erst hier, und nur im Schweige-Zweig.
+    score = np.where(schweigt, score * DAEMPFUNG_OHNE_AUSSAGE, score)
     ergebnis = np.full(litho.shape, NODATA, dtype=np.uint8)
     ergebnis[hat_daten] = np.clip(np.round(score[hat_daten]), 0, 100).astype(np.uint8)
 
@@ -265,12 +308,23 @@ def main() -> int:
         f"Abdeckung {abdeckung:.1f} % der Zellen, davon {int(beide.sum())} aus beiden Quellen.\n"
         f"Laufzeit {dauer:.0f} s. Einzelheiten: {BERICHT.name}"
     )
+    # Laut, nicht still: Ein GK-100-Download mit neuer Nomenklatur soll hier
+    # auffallen und nicht als Loch in der Karte gesucht werden (Nachtrag B4).
+    # Die Fläche steht dabei, weil sie entscheidet, ob der Wert die Karte
+    # überhaupt betrifft.
     for name, bericht_teil in (("Lithologie", litho_bericht), ("Bodentyp", boden_bericht)):
         fehlend = bericht_teil["werte_ohne_zuordnung"]
         if fehlend:
-            print(f"\n{name}: {len(fehlend)} Werte ohne Zuordnung (bleiben leer):")
-            for wert, anzahl in list(fehlend.items())[:10]:
-                print(f"   {anzahl:6d}  {wert!r}")
+            summe = sum(eintrag["km2"] for eintrag in fehlend)
+            print(
+                f"\n{name}: {len(fehlend)} Werte ohne Zuordnung, zusammen "
+                f"{summe:.2f} km² (bleiben leer):"
+            )
+            for eintrag in fehlend[:10]:
+                print(
+                    f"   {eintrag['km2']:9.2f} km²  {eintrag['objekte']:5d} Objekte  "
+                    f"{eintrag['wert']!r}"
+                )
     return 0
 
 
