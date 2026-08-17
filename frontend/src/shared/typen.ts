@@ -37,6 +37,31 @@ export type Polygon = {
   coordinates: [number, number][][];
 };
 
+/**
+ * Saisonzustand eines Gebiets (AP-Saisonzustand, ADR 0007 „Rückweg").
+ *
+ * Zweite, getrennte Größe neben der Bedingungs-Engine: sechs Monate
+ * Rückschau aus dem ERA5-Archiv gegen eine 30-Jahres-Normale. Beantwortet
+ * „ist dieses Jahr eins", nicht „ist jetzt ein guter Zeitpunkt".
+ */
+export type Saisonzustand = {
+  window_end: string;
+  precipitation_30d_mm: number | null;
+  precipitation_90d_mm: number | null;
+  precipitation_180d_mm: number | null;
+  precipitation_30d_percent: number | null;
+  precipitation_90d_percent: number | null;
+  precipitation_180d_percent: number | null;
+  soil_moisture_90d: number | null;
+  soil_moisture_90d_percent: number | null;
+  dry_spell_days: number | null;
+  complete: boolean;
+  missing_days: number;
+  reference_from_year: number;
+  reference_to_year: number;
+  source: string;
+};
+
 export type Gebiet = {
   id: string;
   name: string;
@@ -46,6 +71,8 @@ export type Gebiet = {
   last_visited: string | null;
   offline_pinned: boolean;
   area_m2: number;
+  /** Fehlt, solange der monatliche Backfill für das Gebiet nicht lief. */
+  season?: Saisonzustand | null;
 };
 
 export type GebietEntwurf = {

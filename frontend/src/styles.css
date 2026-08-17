@@ -391,3 +391,36 @@ textarea {
 .aufschluesselung .teilscore {
   display: contents;
 }
+
+/* --- Saisonzustand (AP-Saisonzustand) --------------------------------- */
+
+.saison {
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--rand);
+  border-radius: 8px;
+  background: var(--grund);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.1rem 0.6rem;
+  font-size: 0.875rem;
+}
+
+.saison-wert {
+  display: contents;
+}
+
+.saison dt {
+  color: var(--gedaempft);
+}
+
+.saison dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.saison-fuss {
+  grid-column: 1 / -1;
+  margin: 0.35rem 0 0;
+}

@@ -239,6 +239,85 @@ class ConditionsSnapshot(Base):
     raw: Mapped[dict | None] = mapped_column(JSONB)
 
 
+class SeasonNormal(Base):
+    """30-Jahres-Normale je Gebiet, aus derselben Quelle wie der Ist-Wert.
+
+    Nicht im Spec — ADR 0007 ("Rueckweg") sieht den Archiv-Backfill als
+    eigenes, additives Paket vor. Der Saisonzustand ist eine **Abweichung**,
+    keine Absolutzahl; ohne Referenz gibt es ihn nicht.
+
+    Die Referenz stammt bewusst aus ERA5 und nicht aus DWD-Rasterwerten:
+    In der Differenz zweier Werte desselben Modells hebt sich der
+    Modellbias weitgehend auf. Mischte man ERA5-Ist gegen DWD-Normale,
+    bliebe die Differenz der Modelle als systematischer Fehler in der
+    Anomalie stehen — und niemand saehe ihr an, dass sie kein Wettersignal
+    ist.
+
+    Ablage je **Kalendertag** ("MM-TT" -> Mittelwert), nicht je
+    Tagesnummer: Nur so bleibt der 29.02. ein eigener Wert, und ein Fenster
+    laesst sich gegen genau seine Kalendertage vergleichen.
+    """
+
+    __tablename__ = "season_normal"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    area_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("area.id"), nullable=False, unique=True)
+    reference_from_year: Mapped[int] = mapped_column(Integer, nullable=False)
+    reference_to_year: Mapped[int] = mapped_column(Integer, nullable=False)
+    # "MM-TT" -> mittlere Tagessumme bzw. mittlerer Tageswert.
+    precipitation_by_day: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    soil_moisture_by_day: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    source: Mapped[str] = mapped_column(Text, nullable=False)
+    computed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )
+
+
+class SeasonState(Base):
+    """Saisonzustand je Gebiet und Stichtag (AP-Saisonzustand).
+
+    Getrennt von `conditions_snapshot`, und das ist der Punkt: Die
+    Bedingungs-Engine beantwortet ueber 14 Tage Forecast "ist jetzt ein
+    guter Zeitpunkt", der Saisonzustand ueber sechs Monate Archiv "ist
+    dieses Jahr eins". Zwei Fragen, zwei Quellen, zwei Tabellen (ADR 0007).
+
+    Bewusst **keine Gesamtnote**: Die Kennzahlen stehen einzeln. Eine
+    verdichtete Zahl waere nicht kalibrierbar, solange keine Funddaten
+    existieren, und Invariante 10 verlangt Aufschluesselbarkeit ohnehin.
+    """
+
+    __tablename__ = "season_state"
+    __table_args__ = (UniqueConstraint("area_id", "window_end", name="uq_season_state_area_ende"),)
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    area_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("area.id"), nullable=False, index=True)
+    # Letzter Tag der Rueckschau; zusammen mit area_id der Idempotenz-Schluessel.
+    window_end: Mapped[date] = mapped_column(Date, nullable=False)
+
+    precipitation_30d_mm: Mapped[float | None] = mapped_column(Numeric)
+    precipitation_90d_mm: Mapped[float | None] = mapped_column(Numeric)
+    precipitation_180d_mm: Mapped[float | None] = mapped_column(Numeric)
+    precipitation_30d_percent: Mapped[float | None] = mapped_column(Numeric)
+    precipitation_90d_percent: Mapped[float | None] = mapped_column(Numeric)
+    precipitation_180d_percent: Mapped[float | None] = mapped_column(Numeric)
+    soil_moisture_90d: Mapped[float | None] = mapped_column(Numeric)
+    soil_moisture_90d_percent: Mapped[float | None] = mapped_column(Numeric)
+    # Absolut, ohne Normalbezug: eine lange Trockenphase ist unabhaengig
+    # vom langjaehrigen Mittel bemerkenswert.
+    dry_spell_days: Mapped[int | None] = mapped_column(Integer)
+
+    # Eine Luecke bleibt sichtbar, statt als glatte Teilsumme durchzugehen.
+    complete: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    missing_days: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+
+    source: Mapped[str] = mapped_column(Text, nullable=False)
+    # Rohantwort wie bei conditions_snapshot.raw — Herkunft nachvollziehbar.
+    raw: Mapped[dict | None] = mapped_column(JSONB)
+    computed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )
+
+
 class SuitabilityWeightSet(Base):
     """Gewichtssatz der Eignungskarte (ADR 0008 §3, §7).
 

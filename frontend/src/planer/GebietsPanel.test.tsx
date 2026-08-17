@@ -114,3 +114,59 @@ test("angelegte Gebiete stehen in der Liste", () => {
   expect(screen.getByText("offline")).toBeInTheDocument();
   expect(screen.getByText("120.0 ha")).toBeInTheDocument();
 });
+
+// --- Saisonzustand am Gebiet (AP-Saisonzustand §6) ----------------------
+
+const SAISON = {
+  window_end: "2026-08-14",
+  precipitation_30d_mm: 41.2,
+  precipitation_90d_mm: 120.5,
+  precipitation_180d_mm: 268.0,
+  precipitation_30d_percent: 62.0,
+  precipitation_90d_percent: 55.4,
+  precipitation_180d_percent: 71.3,
+  soil_moisture_90d: 0.18,
+  soil_moisture_90d_percent: 78.9,
+  dry_spell_days: 17,
+  complete: true,
+  missing_days: 0,
+  reference_from_year: 1991,
+  reference_to_year: 2020,
+  source: "era5-archive",
+};
+
+test("zeigt den Saisonzustand am Gebiet, mit Bezugszeitraum", () => {
+  // §6: in der bestehenden Gebietsansicht, keine neue Seite.
+  panel({ entwurf: null, gebiete: [gebiet({ name: "Sötenich", season: SAISON })] });
+
+  const saison = screen.getByLabelText("Saisonzustand");
+  expect(saison).toHaveTextContent("62 %");
+  expect(saison).toHaveTextContent("55 %");
+  expect(saison).toHaveTextContent("71 %");
+  expect(saison).toHaveTextContent("79 %");
+  expect(saison).toHaveTextContent("17 Tage");
+  expect(saison).toHaveTextContent("1991–2020");
+});
+
+test("nennt die Zahlen als Modellwerte", () => {
+  // ADR 0007: gespeichert werden Modellwerte, keine Messwerte.
+  panel({ entwurf: null, gebiete: [gebiet({ season: SAISON })] });
+
+  expect(screen.getByLabelText("Saisonzustand")).toHaveTextContent(/Modellwerte/);
+});
+
+test("unvollstaendige Reihe wird gekennzeichnet", () => {
+  panel({
+    entwurf: null,
+    gebiete: [gebiet({ season: { ...SAISON, complete: false, missing_days: 4 } })],
+  });
+
+  expect(screen.getByLabelText("Saisonzustand")).toHaveTextContent(/unvollständig/i);
+});
+
+test("ohne Saisonzustand bleibt die Gebietszeile unveraendert", () => {
+  panel({ entwurf: null, gebiete: [gebiet({ name: "Ohne Backfill" })] });
+
+  expect(screen.getByText("Ohne Backfill")).toBeInTheDocument();
+  expect(screen.queryByLabelText("Saisonzustand")).not.toBeInTheDocument();
+});

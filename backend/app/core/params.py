@@ -63,6 +63,31 @@ FIELD_TEMP_HEAT_ZERO_C = 35.0
 FIELD_WIND_CALM_KMH = 15.0
 FIELD_WIND_ZERO_KMH = 60.0
 
+# --- Saisonzustand (AP-Saisonzustand, ADR 0007 "Rückweg") -----------------
+# Zweite, getrennte Größe neben der Bedingungs-Engine: sechs Monate statt
+# 14 Tage Rückschau, Archiv statt Forecast. Die Konstanten hier gehören
+# ausdrücklich **nicht** zum Bedingungs-Scoring darüber und werden dort
+# auch nicht verwendet.
+
+# Ein Tag unterhalb dieser Regenmenge zählt für die Trockenperiode als
+# trocken. 1 mm ist der übliche Schwellwert; darunter verdunstet der
+# Niederschlag weitgehend, bevor er den Wurzelraum erreicht. Nach den
+# ersten Saisonbeobachtungen zu prüfen.
+SEASON_DRY_DAY_MAX_MM = 1.0
+
+# Rückschau-Fenster in Tagen. 180 Tage decken Frühsommer bis Herbst ab —
+# den Zeitraum, in dem sich entscheidet, ob es überhaupt Fruchtkörper gibt.
+SEASON_WINDOWS_DAYS = (30, 90, 180)
+
+# Fenster der mittleren Bodenfeuchte, in Tagen.
+SEASON_SOIL_WINDOW_DAYS = 90
+
+# Referenzzeitraum der Normale: klimatologische Standardperiode der WMO.
+# Beide Seiten der Anomalie stammen aus derselben Quelle (ERA5), damit sich
+# der Modellbias in der Differenz weitgehend aufhebt.
+SEASON_NORMAL_FROM_YEAR = 1991
+SEASON_NORMAL_TO_YEAR = 2020
+
 # --- Feld-Logging (Invariante 1/2) ----------------------------------------
 # Oberhalb dieser gemeldeten Genauigkeit wird das Loggen blockiert. iOS ohne
 # "Genauer Standort" liefert 3-9 km — jede Schwelle im niedrigen dreistelligen

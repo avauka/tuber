@@ -92,6 +92,7 @@ export function gebiet(teil: Partial<Gebiet> = {}): Gebiet {
     last_visited: null,
     offline_pinned: false,
     area_m2: 1_200_000,
+    season: null,
     ...teil,
   };
 }

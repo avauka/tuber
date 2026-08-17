@@ -3,6 +3,7 @@ import { useState, type FormEvent } from "react";
 import { ApiFehler, legeGebietAn } from "../shared/api";
 import { flaeche } from "../shared/formatierung";
 import type { Gebiet, Polygon } from "../shared/typen";
+import { SaisonZeile } from "./SaisonZeile";
 
 type Props = {
   gebiete: Gebiet[];
@@ -151,6 +152,7 @@ export function GebietsPanel({
                 <span>{flaeche(gebiet.area_m2)}</span>
               </div>
               {gebiet.access_notes && <p className="notiz">Zufahrt: {gebiet.access_notes}</p>}
+              {gebiet.season && <SaisonZeile saison={gebiet.season} />}
             </li>
           ))}
         </ul>

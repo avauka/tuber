@@ -95,6 +95,7 @@ In der Produktion bleibt die Variable ungesetzt.
 | `tuber` | GitHub-Repo, `backend/Dockerfile` | FastAPI hinter Railway-TLS, liefert auch das Frontend aus |
 | `wetter-cron` | **dasselbe Image** | täglicher Open-Meteo-Ingest |
 | `backup-cron` | **dasselbe Image** | löst den Dump per HTTP aus (ADR 0004) |
+| `saison-cron` | **dasselbe Image** | monatlicher Archiv-Backfill (ADR 0007 „Rückweg") |
 
 Railway kennt **keine geteilten Volumes** — ein Volume gehört genau einem
 Service (verifiziert 2026-08-11). Das Volume hängt deshalb am Service `tuber`
@@ -158,6 +159,17 @@ Das Klartextpasswort gehört nirgendwohin ausser in deinen Passwortmanager.
 
 Kein API-Key: Open-Meteo ist bei nicht-kommerzieller Nutzung schlüssellos
 (Spec §5). Kein `SESSION_SECRET` — der Job spricht kein HTTP an.
+
+### Service `saison-cron`
+
+| Variable | Wert | Pflicht |
+|---|---|---|
+| `DATABASE_URL` | Referenz auf `db` | ja |
+
+Monatlich, nicht täglich — der Saisonzustand ändert sich langsam. Er ist
+eine **zweite, getrennte** Grösse neben der Bedingungs-Engine und rührt
+`conditions_snapshot` nicht an. Details:
+[`saison-backfill-cron.md`](saison-backfill-cron.md).
 
 ### Service `backup-cron`
 
