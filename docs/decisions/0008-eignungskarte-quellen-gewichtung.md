@@ -353,3 +353,68 @@ vollständig nördlich der Bbox.
 43,26 km² wechseln von Klasse 3 nach 4, keine Fläche in anderer Richtung.
 Unterhalb der Schwelle ändert sich nichts: Dort ist die Kennlinie linear
 durch den Ursprung, beide Reihenfolgen sind gleichwertig.
+
+**Ausgangswert für AP17b.** Die Spalte „nachher" ist der Stand, gegen den
+die nächsten fünf Faktoren zu messen sind. Bemerkenswert daran ist die
+Schieflage innerhalb der kalkgeprägten Fläche: Von 482,0 km² der Klassen 3
+und 4 liegen **367,8 km² — also 76 % — in Klasse 4**, der obersten. Mit
+einem einzigen Faktor ist das erwartbar, denn die Kennlinie spreizt
+oberhalb der Schwelle und drängt alles Carbonathaltige nach oben; die
+Klassen 2 und 3 bleiben fast leer (1,5 und 114,2 km²).
+
+Genau daran ist die Kennlinie nach AP17b zu prüfen: Sobald fünf weitere
+Faktoren mitwiegen, sollte sich die Verteilung über alle vier Klassen
+öffnen. Tut sie das nicht — bleibt also die Masse in Klasse 4 oder kippt
+sie nach Klasse 1 —, ist `SCHWELLE` oder `KLASSENGRENZEN` zu justieren,
+nicht vorher. Wer jetzt daran dreht, justiert zweimal.
+
+## 15. Offen: Der Kalkfaktor allein trennt die Fundregionen nicht
+
+**Befund aus Lauf C des AP17a-Nachtrags (2026-08-13).**
+
+Die Forschungsgruppe Hypogäen weist für NRW über 2000 Fundstellen aus; zwei
+ihrer Grossregionen liegen im Kartenausschnitt. Gegen beide wurde der
+Kalklayer gehalten — mit grob handdigitalisierten Umrissen unter
+`geoprocessing/work/`, ohne Fundkoordinaten und ohne fremde Daten.
+
+| Region | Fläche | mit Datenlage | Klasse 1 | Klasse 3+4 |
+|---|---|---|---|---|
+| Aachen–Düren–Mechernich | 2037,5 km² | 99,1 % | 91,7 % | **8,3 %** |
+| Rheinauen Köln–Bonn–Remagen | 646,3 km² | 97,5 % | 98,3 % | **1,6 %** |
+
+Zum Vergleich: Über den ganzen Ausschnitt liegen 6,4 % der kartierten
+Fläche in Klasse 3 oder 4.
+
+**Die Erwartung trifft nur halb zu.** Für die Rheinauen sagt der Layer wie
+vorhergesagt Klasse 1 — dort liegt das Carbonat im Lockersediment und im
+Auenlehm, nicht im Festgestein, und die Auenbodentypen stehen im
+Schweige-Band. Für die Aachener Region dagegen sagt der Layer **nicht**
+überwiegend Klasse 3 und 4, sondern zu 91,7 % Klasse 1. Die Anreicherung
+gegenüber dem Kartenmittel ist mit Faktor 1,3 schwach; die Rheinauen sind
+mit Faktor 0,25 deutlich abgereichert.
+
+Zwei Einschränkungen, die in den Befund gehören:
+
+* Der Umriss ist bewusst grob und mit 2037 km² sehr weit gefasst. Er nimmt
+  Rureifel und Venn-Vorland mit, wo kein Kalk liegt — das verdünnt jede
+  Anreicherung. Ein Korridor entlang der Kalkmulden sähe anders aus.
+* Ein erheblicher Teil der guten Fläche ist gar keine gewachsene
+  Kalklandschaft: **31,1 der 109,4 km² Klasse 4** in der Aachener Region
+  und **5,5 der 10,3 km²** in den Rheinauen sind Auftrags-Pararendzina,
+  also Rekultivierung des Braunkohlereviers (§13). In den Rheinauen ist
+  damit über die Hälfte der ohnehin kleinen guten Fläche geschüttetes
+  Material.
+
+**Befund, keine Korrektur.** Mit einem Faktor von sechs ist das der
+erwartbare Zustand, und ADR §5 sieht ausdrücklich vor, dass ein einzelner
+Faktor die Karte nicht trägt. Ob Auenstandorte eine eigene Behandlung
+brauchen, entscheidet AP17b, wenn der Wasserhaushaltsfaktor die Auen
+ohnehin anfasst. Was hier festzuhalten ist: **Der Kalkfaktor allein trennt
+die bekannten Fundregionen nicht.** Sollte sich das nach AP17b nicht
+ändern, ist nicht die Tabelle das Problem, sondern die Faktorik.
+
+Und eine Einschränkung, die auch nach AP17b bleibt: Köln und Bonn sind
+dicht besiedelt, ein Fundcluster dort kann Beobachterdichte statt
+Habitatqualität abbilden. Dass die dünn besiedelte Region
+Aachen–Mechernich ebenfalls auftaucht, spricht für ein echtes Habitat —
+aus Meldedaten allein ist beides nicht zu trennen.

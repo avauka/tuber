@@ -81,9 +81,11 @@ gemeinsamen 20-m-Raster aus `raster.py` — **die Rastergeometrie ist einmal
 zentral definiert**, sonst passen die Faktorlayer später nicht zellgenau
 aufeinander.
 
-Der Lauf schreibt ausserdem `work/kalk_stufe1.json` mit der Abdeckung und
-allen Attributwerten, für die es keine Zuordnung gibt. Diese Liste gehört
-angesehen: Was dort steht, bleibt als Loch in der Karte.
+Der Lauf schreibt ausserdem `work/kalk.meta.json` mit der Abdeckung und
+allen Attributwerten, für die es keine Zuordnung gibt — jeweils mit ihrer
+Fläche in km². Dieselbe Liste steht am Ende der Ausgabe. Sie gehört
+angesehen: Was dort steht, bleibt als Loch in der Karte, und die Fläche
+sagt, ob das die Karte überhaupt betrifft.
 
 ## 3. Stufe 2 — gewichten und Kacheln schreiben
 

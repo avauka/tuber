@@ -255,11 +255,24 @@ BODEN_UEBERSCHREIBT_BIS = 10.0
 #
 # **Die Dämpfung greift nach der Kennlinie, nicht davor** (AP17a-Nachtrag,
 # B1). Davor angewandt wirkte die Konstante nicht wie 0,85: Die Kennlinie
-# spreizt oberhalb der Schwelle mit 1,5, wodurch aus 0,85 auf dem Rohwert
-# ein Faktor von gemessen 0,743 bis 0,775 auf dem ausgelieferten Score
-# wurde — abhängig davon, wo der Rohwert lag, also nicht einmal konstant.
+# staucht unterhalb der Schwelle mit 0,5 und spreizt darüber mit 1,5,
+# wodurch der Faktor auf dem ausgelieferten Score vom Rohwert abhing —
+# und zwar **nicht monoton**. Gemessen über den Wertebereich 50 bis 100
+# (Lauf C0a):
+#
+#     Rohwert  50    51    55    58,8   65    80    100
+#     wirksam  0,850 0,818 0,719 0,654  0,692 0,743 0,775
+#
+# Genau an der Schwelle also 0,85, im Minimum bei Rohwert 58,8 nur 0,654,
+# am oberen Ende 0,775. Über die **im Datensatz tatsächlich vorkommenden**
+# Rohwerte lag die Spanne bei 0,743 bis 0,775 (1,000 dort, wo der
+# Bodenwert höher lag und die Dämpfung ins Leere ging) — das Minimum blieb
+# unerreicht, weil das Band 55 bis 60 heute praktisch leer ist. Mit den
+# fünf Faktoren aus AP17b füllt es sich, und dann wäre genau dort die
+# stärkste Verzerrung gelegen.
+#
 # Eine benannte Konstante soll bedeuten, was sie sagt; hinter der Kennlinie
-# tut sie das.
+# tut sie das, über den ganzen Wertebereich.
 #
 # Wirkung des Umbaus, gemessen an den Faktorlayern vom 2026-08-13: 43,26 km²
 # wechseln von Klasse 3 nach 4, keine Fläche wechselt in anderer Richtung.

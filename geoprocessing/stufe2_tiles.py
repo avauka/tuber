@@ -62,7 +62,9 @@ STUFEN_DATEI = "kalk_stufe.tif"
 # Der Score wird auf 5 Punkte gerundet, bevor Flächen gebildet werden.
 # Ohne diese Stufung entstünde je Wert eine eigene Fläche.
 #
-# Gemessen am Stand vom 2026-08-13 (AP17a-Nachtrag A3), beide Gründe:
+# Gemessen am Stand vom 2026-08-13 (AP17a-Nachtrag A3), **vor dem
+# B1-Umbau** — die absoluten Zahlen gelten für jenen Stand, das
+# Grössenverhältnis ist davon unberührt. Beide Gründe:
 #
 # 1. **Grösse.** 7,67 MB mit Rundung gegen 11,26 MB ohne, bei 7934 statt
 #    14 664 Flächen — 3,59 MB Unterschied.
