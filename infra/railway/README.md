@@ -219,3 +219,17 @@ wahrscheinlichere Fehlerquelle.
 
 Ein Deploy mit fehlgeschlagener Migration startet gar nicht erst — der
 Entrypoint bricht bei Fehlern ab (`set -e`).
+
+## Dockerfile-Pfad kommt aus railway.json
+
+Die Datei `railway.json` in der Repo-Wurzel legt fuer **alle** Dienste des
+Projekts fest, dass mit `backend/Dockerfile` gebaut wird. Damit muss der
+Pfad nicht je Dienst im Dashboard gesucht werden — das Feld ist dort je
+nach Ansicht nicht ohne Weiteres zu finden.
+
+Bewusst steht dort **nur** der Build-Abschnitt. Ein `startCommand` in
+dieser Datei gaelte fuer jeden Dienst gleichermassen und wuerde die
+Unterscheidung zwischen API und den Cron-Diensten aufheben; der
+Startbefehl bleibt deshalb je Dienst im Dashboard.
+
+Root Directory bleibt bei allen Diensten leer.
