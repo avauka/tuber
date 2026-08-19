@@ -94,3 +94,18 @@ ansieht.
 `GET /api/areas` liefert den jüngsten Saisonzustand je Gebiet als Feld
 `season`; der Planer zeigt ihn in der Gebietsliste. Keine eigene Seite,
 kein eigener Endpunkt — es ist ein Attribut des Gebiets.
+
+## Ratenbegrenzung der Archiv-API
+
+Open-Meteo begrenzt die Aufrufe je Minute, und der 30-Jahres-Abruf wiegt
+schwer. Beim **ersten** Lauf holt jedes Gebiet zwei Abrufe — Normale und
+180-Tage-Fenster. Im ersten echten Lauf (2026-08-19, vier Gebiete) kam der
+achte Abruf als `429 Too Many Requests` zurueck, und das vierte Gebiet
+blieb ohne Saisonzustand.
+
+Der Job wartet seitdem bei einem 429 und wiederholt (20 s, 45 s, 90 s), und
+zwischen den Gebieten liegen drei Sekunden Pause. Jeder andere Fehlerstatus
+fliegt sofort — durch Warten wird ein 400 nicht besser.
+
+Folgelaeufe sind unkritisch: Die Normale liegt dann in der Datenbank, es
+bleibt ein Abruf je Gebiet.

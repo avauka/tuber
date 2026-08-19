@@ -275,3 +275,80 @@ def test_nur_der_juengste_stichtag_erscheint(client, db_session):
     gebiet = next(g for g in client.get("/api/areas").json() if g["id"] == str(area_id))
 
     assert gebiet["season"]["window_end"] == STICHTAG.isoformat()
+
+
+# ------------------------------------------- Ratenbegrenzung (Produktionsbefund)
+
+
+def test_429_wird_wiederholt_statt_das_gebiet_zu_verlieren(db_session, monkeypatch):
+    """Befund aus dem ersten echten Lauf am 2026-08-19.
+
+    Vier Gebiete ergaben beim ersten Mal acht Abrufe in drei Sekunden — je
+    Gebiet die 30-Jahres-Normale und das 180-Tage-Fenster. Open-Meteo
+    beantwortete den letzten mit `429 Too Many Requests`, und das Gebiet
+    blieb ohne Saisonzustand zurueck.
+
+    Ein 429 ist kein Fehler der Anfrage, sondern eine Bitte um Geduld: Er
+    gehoert abgewartet, nicht gemeldet.
+    """
+    from app.jobs import season_backfill
+
+    gewartet: list[float] = []
+    monkeypatch.setattr(season_backfill.time, "sleep", gewartet.append)
+
+    antworten = _antworten()
+    versuche = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        start = request.url.params.get("start_date", "")
+        schluessel = "normale" if start.startswith(str(params.SEASON_NORMAL_FROM_YEAR)) else "ist"
+        if schluessel == "ist":
+            versuche["n"] += 1
+            if versuche["n"] == 1:
+                return httpx.Response(429, text="Too Many Requests")
+        return httpx.Response(200, json=antworten[schluessel])
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    area_id = _area(db_session)
+
+    backfill_gebiet(db_session, client, area_id, 50.55, 6.55, stichtag=STICHTAG)
+
+    zustand = db_session.execute(
+        select(SeasonState).where(SeasonState.area_id == area_id)
+    ).scalar_one()
+    assert zustand.precipitation_180d_mm is not None
+    assert versuche["n"] == 2, "der zweite Versuch muss die Werte holen"
+    assert gewartet, "zwischen den Versuchen wird gewartet"
+
+
+def test_dauerhafter_429_scheitert_am_ende_doch(db_session, monkeypatch):
+    """Endlos wiederholt wird nicht — sonst haengt der Cron."""
+    from app.jobs import season_backfill
+
+    monkeypatch.setattr(season_backfill.time, "sleep", lambda _s: None)
+    client = httpx.Client(
+        transport=httpx.MockTransport(lambda _r: httpx.Response(429, text="Too Many Requests"))
+    )
+    area_id = _area(db_session)
+
+    with pytest.raises(httpx.HTTPStatusError):
+        backfill_gebiet(db_session, client, area_id, 50.55, 6.55, stichtag=STICHTAG)
+
+
+def test_andere_fehler_werden_nicht_wiederholt(db_session, monkeypatch):
+    """Ein 400 wird durch Warten nicht besser."""
+    from app.jobs import season_backfill
+
+    monkeypatch.setattr(season_backfill.time, "sleep", lambda _s: None)
+    aufrufe = {"n": 0}
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        aufrufe["n"] += 1
+        return httpx.Response(400, text="Bad Request")
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    area_id = _area(db_session)
+
+    with pytest.raises(httpx.HTTPStatusError):
+        backfill_gebiet(db_session, client, area_id, 50.55, 6.55, stichtag=STICHTAG)
+    assert aufrufe["n"] == 1

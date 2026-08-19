@@ -27,6 +27,7 @@ gescheitert ist.
 """
 
 import sys
+import time
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -46,6 +47,21 @@ from app.services.saisonzustand import (
 )
 
 ARCHIV_URL = "https://archive-api.open-meteo.com/v1/archive"
+
+# Open-Meteo begrenzt die Aufrufe je Minute, und der 30-Jahres-Abruf wiegt
+# schwer. Beim ersten Lauf ueber mehrere Gebiete faellt genau das auf:
+# je Gebiet zwei Abrufe, der letzte kam am 2026-08-19 als 429 zurueck und
+# das Gebiet blieb ohne Saisonzustand.
+#
+# Ein 429 ist keine Ablehnung der Anfrage, sondern eine Bitte um Geduld —
+# also warten und wiederholen. Jeder andere Fehlerstatus wird durch Warten
+# nicht besser und fliegt sofort.
+WIEDERHOLUNGEN_BEI_429 = 3
+WARTEZEIT_BEI_429_S = (20.0, 45.0, 90.0)
+
+# Kleine Pause zwischen den Gebieten, damit der Minutenzaehler gar nicht
+# erst volllaeuft. Der Job laeuft monatlich; ein paar Sekunden sind gratis.
+PAUSE_JE_GEBIET_S = 3.0
 
 # Geprueft gegen die Archiv-API am 2026-08-17: Beide Groessen existieren
 # dort unter denselben Namen wie in der Forecast-API, als Tagesaggregat.
@@ -93,18 +109,23 @@ def stichtag_heute(heute: date | None = None) -> date:
 
 
 def _abrufen(client: httpx.Client, lat: float, lon: float, von: date, bis: date) -> dict:
-    antwort = client.get(
-        ARCHIV_URL,
-        params={
-            "latitude": f"{lat}",
-            "longitude": f"{lon}",
-            "start_date": von.isoformat(),
-            "end_date": bis.isoformat(),
-            "daily": ",".join(TAGESWERTE),
-            "timezone": "UTC",
-        },
-        timeout=REQUEST_TIMEOUT_S,
-    )
+    parameter = {
+        "latitude": f"{lat}",
+        "longitude": f"{lon}",
+        "start_date": von.isoformat(),
+        "end_date": bis.isoformat(),
+        "daily": ",".join(TAGESWERTE),
+        "timezone": "UTC",
+    }
+
+    for versuch in range(WIEDERHOLUNGEN_BEI_429 + 1):
+        antwort = client.get(ARCHIV_URL, params=parameter, timeout=REQUEST_TIMEOUT_S)
+        if antwort.status_code != 429 or versuch == WIEDERHOLUNGEN_BEI_429:
+            break
+        wartezeit = WARTEZEIT_BEI_429_S[min(versuch, len(WARTEZEIT_BEI_429_S) - 1)]
+        print(f"   429 der Archiv-API, warte {wartezeit:.0f} s und versuche es erneut")
+        time.sleep(wartezeit)
+
     antwort.raise_for_status()
     nutzlast = antwort.json()
     fehlend = [name for name in TAGESWERTE if name not in nutzlast.get("daily", {})]
@@ -221,7 +242,12 @@ def run_backfill(
     summary = BackfillSummary()
     ende = stichtag or stichtag_heute()
 
-    for area_id, name, lat, lon in _area_points(db):
+    for nummer, (area_id, name, lat, lon) in enumerate(_area_points(db)):
+        # Zwischen den Gebieten kurz durchatmen: Beim ersten Lauf holt jedes
+        # zwei Abrufe, davon den schweren 30-Jahres-Abruf. Ohne Pause laeuft
+        # der Minutenzaehler von Open-Meteo voll (Befund 2026-08-19).
+        if nummer:
+            time.sleep(PAUSE_JE_GEBIET_S)
         summary.areas_total += 1
         hatte_normale = (
             db.execute(
